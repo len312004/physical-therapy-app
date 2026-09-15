@@ -52,7 +52,7 @@ type Evaluation = {
   saved_at?: string;
 };
 
-type SectionKey = 'patient' | 'subjective' | 'objective' | 'assessment' | 'plan' | 'vitals' | 'goals' | 'problemGoals' | 'medicalCertificate' | 'progressReport' | 'estimateCost' | 'ptNotes';
+type SectionKey = 'patient' | 'subjective' | 'objective' | 'assessment' | 'plan' | 'vitals' | 'goals' | 'problemGoals' | 'medicalCertificate' | 'progressReport' | 'estimateCost';
 
 const demoPatients = [
   { name: 'John Smith', diagnosis: 'Lower back pain', age: 45, gender: 'Male', phone: '(555) 123-4567', email: 'john.smith@email.com', address: '18 Cedar Lane' },
@@ -76,7 +76,7 @@ function App() {
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [showPrintMenu, setShowPrintMenu] = useState(false);
-  const [printSections, setPrintSections] = useState<Record<SectionKey, boolean>>({ patient: true, subjective: true, objective: true, assessment: true, plan: true, vitals: true, goals: true, problemGoals: true, medicalCertificate: true, progressReport: true, estimateCost: true, ptNotes: true });
+  const [printSections, setPrintSections] = useState<Record<SectionKey, boolean>>({ patient: true, subjective: true, objective: true, assessment: true, plan: true, vitals: true, goals: true, problemGoals: true, medicalCertificate: true, progressReport: true, estimateCost: true });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -273,7 +273,7 @@ function App() {
     const nextPrintSections = { ...printSections };
     setPrintSections(nextPrintSections);
     const root = document.documentElement;
-    (['patient', 'subjective', 'objective', 'assessment', 'plan', 'vitals', 'goals', 'problemGoals', 'medicalCertificate', 'progressReport', 'estimateCost', 'ptNotes'] as SectionKey[]).forEach((section) => {
+    (['patient', 'subjective', 'objective', 'assessment', 'plan', 'vitals', 'goals', 'problemGoals', 'medicalCertificate', 'progressReport', 'estimateCost'] as SectionKey[]).forEach((section) => {
       root.style.setProperty(`--print-${section}`, nextPrintSections[section] ? 'block' : 'none');
     });
     window.print();
@@ -301,7 +301,7 @@ function App() {
       </aside>
 
       <main className="main-content">
-        <header className="topbar"><div><p className="eyebrow">{viewMode === 'archive' ? 'Records / Archive' : viewMode === 'evaluations' ? 'Records / Evaluations' : 'Records / Overview'}</p><h1>{selectedPatient ? selectedPatient.name : 'Patient records'}</h1></div><div className="top-actions"><div className="save-status">{notice ? <><span className="status-dot" /> {notice}</> : 'All changes saved locally'}</div><button className="icon-button mobile-menu" onClick={() => setSidebarOpen(true)}><Menu size={19} /></button><button className="outline-button" onClick={() => { setEditingPatient(selectedPatient); setShowPatientModal(true); }} disabled={!selectedPatient}><Pencil size={16} /> Edit</button><button className="outline-button archive-header" onClick={() => void toggleArchive(selectedPatient)} disabled={!selectedPatient}>{selectedPatient?.status === 'active' ? <Archive size={16} /> : <ArchiveRestore size={16} />}{selectedPatient?.status === 'active' ? 'Archive patient' : 'Restore patient'}</button><button className="primary-button save-header" onClick={() => void saveEvaluation()} disabled={!selectedPatient || saving}><Save size={16} /> {saving ? 'Saving…' : 'Save evaluation'}</button><div className="print-wrap"><button className="dark-button" onClick={() => setShowPrintMenu((current) => !current)} disabled={!selectedPatient}><Printer size={16} /> Print selected <ChevronDown size={14} /></button>{showPrintMenu && <div className="print-menu"><div className="print-menu-title">Select pages to print</div>{(['patient', 'objective', 'vitals', 'goals', 'plan', 'problemGoals', 'medicalCertificate', 'progressReport', 'estimateCost', 'ptNotes'] as SectionKey[]).map((section, index) => <label key={section}><input type="checkbox" checked={printSections[section]} onChange={(event) => setPrintSections((current) => ({ ...current, [section]: event.target.checked }))} /><span>Page {index + 1}</span></label>)}<button className="primary-button full" onClick={printSelected}><Printer size={15} /> Print pages</button></div>}</div></div></header>
+        <header className="topbar"><div><p className="eyebrow">{viewMode === 'archive' ? 'Records / Archive' : viewMode === 'evaluations' ? 'Records / Evaluations' : 'Records / Overview'}</p><h1>{selectedPatient ? selectedPatient.name : 'Patient records'}</h1></div><div className="top-actions"><div className="save-status">{notice ? <><span className="status-dot" /> {notice}</> : 'All changes saved locally'}</div><button className="icon-button mobile-menu" onClick={() => setSidebarOpen(true)}><Menu size={19} /></button><button className="outline-button" onClick={() => { setEditingPatient(selectedPatient); setShowPatientModal(true); }} disabled={!selectedPatient}><Pencil size={16} /> Edit</button><button className="outline-button archive-header" onClick={() => void toggleArchive(selectedPatient)} disabled={!selectedPatient}>{selectedPatient?.status === 'active' ? <Archive size={16} /> : <ArchiveRestore size={16} />}{selectedPatient?.status === 'active' ? 'Archive patient' : 'Restore patient'}</button><button className="primary-button save-header" onClick={() => void saveEvaluation()} disabled={!selectedPatient || saving}><Save size={16} /> {saving ? 'Saving…' : 'Save evaluation'}</button><div className="print-wrap"><button className="dark-button" onClick={() => setShowPrintMenu((current) => !current)} disabled={!selectedPatient}><Printer size={16} /> Print selected <ChevronDown size={14} /></button>{showPrintMenu && <div className="print-menu"><div className="print-menu-title">Select pages to print</div>{(['patient', 'objective', 'vitals', 'goals', 'plan', 'problemGoals', 'medicalCertificate', 'progressReport', 'estimateCost'] as SectionKey[]).map((section, index) => <label key={section}><input type="checkbox" checked={printSections[section]} onChange={(event) => setPrintSections((current) => ({ ...current, [section]: event.target.checked }))} /><span>Page {index + 1}</span></label>)}<button className="primary-button full" onClick={printSelected}><Printer size={15} /> Print pages</button></div>}</div></div></header>
         {selectedPatient && evaluation ? <div className="record-layout">
           <section className="record-card patient-info" data-print-section="patient">
             <div className="patient-info-document">
@@ -823,32 +823,6 @@ function App() {
                   <div className="estimate-cost-signature-license">Lic. No. 23167</div>
                 </div>
               </div>
-            </div>
-          </section>
-
-          <section className="pt-notes-page page-break-page-10" data-print-section="ptNotes">
-            <header className="pt-notes-header">
-              <div className="document-logo-wrap">
-                <img className="document-logo" src={clinicLogo} alt="Clinic logo" />
-              </div>
-              <div className="pt-notes-branding">
-                <h1>BORONGAN PHYSICAL THERAPY CENTER</h1>
-                <p>REAL STREET, BARANGAY SONGCO, BORONGAN EASTERN SAMAR</p>
-                <p>+639293310697 / +639085982802 / +6392743043238</p>
-              </div>
-            </header>
-
-            <h2 className="pt-notes-title">PT NOTES</h2>
-
-            <div className="pt-notes-body">
-              <textarea
-                className="pt-notes-box auto-grow"
-                aria-label="PT notes"
-                placeholder="Write session notes, observations, or reminders for this patient here..."
-                value={String(patientFieldValue('ptNotes'))}
-                onChange={(event) => updatePatientField('ptNotes', event.target.value)}
-                onInput={autoResize}
-              />
             </div>
           </section>
 

@@ -1661,4 +1661,11 @@ body {
     margin-top: 8px;
     padding-top: 8px;
   }
+}.goals-problem-box,
+.goals-box,
+.treatment-plan-box,
+.problem-goals-box,
+.manual-muscle-box {
+  overflow: hidden;
+  resize: none;
 }
