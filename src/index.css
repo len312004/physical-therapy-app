@@ -1739,19 +1739,21 @@ body {
   .record-card, .evaluation-card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; page-break-inside: avoid; }
   .evaluation-card textarea { border: 1px solid #ccc; background: white; }
   .page-break-page-2 { break-before: page; page-break-before: always; }
-  [data-print-section] { display: block; }
-  [data-print-section="patient"] { display: var(--print-patient, block); }
-  [data-print-section="subjective"] { display: var(--print-subjective, none); }
-  [data-print-section="objective"] { display: var(--print-objective, none); }
-  [data-print-section="assessment"] { display: var(--print-assessment, none); }
-  [data-print-section="plan"] { display: var(--print-plan, none); }
-  [data-print-section="vitals"] { display: var(--print-vitals, none); }
-  [data-print-section="goals"] { display: var(--print-goals, none); }
-  [data-print-section="problemGoals"] { display: var(--print-problemGoals, none); }
-  [data-print-section="medicalCertificate"] { display: var(--print-medicalCertificate, none); }
-  [data-print-section="progressReport"] { display: var(--print-progressReport, none); }
-  [data-print-section="ptNotes"] { display: var(--print-ptNotes, none); }
+[data-print-section] { display: none !important; }
+  [data-print-section="patient"] { display: var(--print-patient, block) !important; }
+  [data-print-section="subjective"] { display: var(--print-subjective, none) !important; }
+  [data-print-section="objective"] { display: var(--print-objective, none) !important; }
+  [data-print-section="assessment"] { display: var(--print-assessment, none) !important; }
+  [data-print-section="plan"] { display: var(--print-plan, none) !important; }
+  [data-print-section="vitals"] { display: var(--print-vitals, none) !important; }
+  [data-print-section="goals"] { display: var(--print-goals, none) !important; }
+  [data-print-section="problemGoals"] { display: var(--print-problemGoals, none) !important; }
+  [data-print-section="medicalCertificate"] { display: var(--print-medicalCertificate, none) !important; }
+  [data-print-section="progressReport"] { display: var(--print-progressReport, none) !important; }
+  [data-print-section="estimateCost"] { display: var(--print-estimateCost, none) !important; }
+  [data-print-section="ptNotes"] { display: var(--print-ptNotes, none) !important; }
   .no-print { display: none !important; }
+}
   .patient-info-document { border: none; box-shadow: none; background: white; min-height: auto; margin: 0 auto; }
 
   .initial-evaluation-page {
