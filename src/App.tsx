@@ -98,7 +98,7 @@ function App() {
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [showPrintMenu, setShowPrintMenu] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
-  const [printSections, setPrintSections] = useState<Record<SectionKey, boolean>>({ patient: true, subjective: true, objective: true, assessment: true, plan: true, vitals: true, goals: true, problemGoals: true, medicalCertificate: true, progressReport: true, estimateCost: true, ptNotes: true });
+  const [printSections, setPrintSections] = useState<Record<SectionKey, boolean>>({ patient: true, subjective: false, objective: false, assessment: false, plan: false, vitals: false, goals: false, problemGoals: false, medicalCertificate: false, progressReport: false, estimateCost: false, ptNotes: false });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
