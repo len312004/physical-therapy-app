@@ -1588,7 +1588,7 @@ body {
 
 /* Hide add/remove controls when printing — only the written content should print */
 @media print {
-  [data-print-section="ptNotes"] { display: var(--print-ptNotes, none); }
+  [data-print-section="estimateCost"] { display: var(--print-estimateCost, none) !important; }
 }
 .pt-notes-entry {
   display: flex;
