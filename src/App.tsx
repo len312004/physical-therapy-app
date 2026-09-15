@@ -25,6 +25,7 @@ function autoResize(event: React.FormEvent<HTMLTextAreaElement>) {
   el.style.height = 'auto';
   el.style.height = `${el.scrollHeight}px`;
 }
+
 type Patient = {
   id: string;
   name: string;
@@ -62,6 +63,9 @@ const demoPatients = [
 
 const emptyEvaluation = (patientId: string): Evaluation => ({ patient_id: patientId, subjective: '', objective: '', assessment: '', plan: '' });
 
+const romFields = ['Joint', 'Motion', 'Endfeel', 'Arom', 'AromDiff', 'Prom', 'PromDiff'];
+const romLabels: Record<string, string> = { Joint: 'Joint', Motion: 'Motion', Endfeel: 'Endfeel', Arom: 'Arom', AromDiff: 'Diff', Prom: 'Prom', PromDiff: 'Diff' };
+
 function App() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedId, setSelectedId] = useState('');
@@ -95,6 +99,11 @@ function App() {
     return typeof value === 'boolean' ? (value ? 'true' : 'false') : (value ?? '');
   };
 
+  const patientFieldChecked = (key: string) => {
+    if (!selectedPatient) return false;
+    return Boolean(selectedPatient.document_data?.[key]);
+  };
+
   const updatePatientField = (key: string, value: string | boolean) => {
     if (!selectedPatient) return;
     setPatients((current) => current.map((patient) => patient.id === selectedPatient.id ? {
@@ -114,35 +123,22 @@ function App() {
       return;
     }
 
-    // ✅ CLEAR OLD DATA FIRST - This prevents showing stale data
-    setEvaluation(null);
-    
-    // ✅ THEN load new patient's data
-    const loadNewPatientData = async () => {
-      const cachedEvaluation = evaluationsByPatient[selectedId] ?? emptyEvaluation(selectedId);
-      setEvaluation(cachedEvaluation);
-      await loadEvaluation(selectedId);
-    };
-    
-    loadNewPatientData();
+    const cachedEvaluation = evaluationsByPatient[selectedId] ?? emptyEvaluation(selectedId);
+    setEvaluation(cachedEvaluation);
+    void loadEvaluation(selectedId);
   }, [selectedId]);
 
-  // ✅ FIX 3: Validation check to prevent data mismatch
-  // If somehow evaluation patient_id doesn't match selectedId, fix it immediately
+  // Resize every auto-growing textarea whenever the selected patient (and thus its saved values) changes.
   useEffect(() => {
-    if (evaluation && evaluation.patient_id !== selectedId) {
-      console.warn('🔄 Data mismatch detected - fixing...');
-      console.warn('Selected Patient ID:', selectedId);
-      console.warn('Evaluation Patient ID:', evaluation.patient_id);
-      
-      // Clear evaluation and reload correct one
-      setEvaluation(null);
-      if (selectedId) {
-        const correctEval = evaluationsByPatient[selectedId] ?? emptyEvaluation(selectedId);
-        setEvaluation(correctEval);
-      }
-    }
-  }, [evaluation, selectedId, evaluationsByPatient]);
+    const timeout = window.setTimeout(() => {
+      const areas = document.querySelectorAll<HTMLTextAreaElement>('textarea.auto-grow');
+      areas.forEach((el) => {
+        el.style.height = 'auto';
+        el.style.height = `${el.scrollHeight}px`;
+      });
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [selectedId, selectedPatient?.document_data]);
 
   async function loadPatients() {
     setLoading(true);
@@ -185,7 +181,11 @@ function App() {
     if (!evaluation || !selectedPatient) return;
     setSaving(true);
     const { data, error } = await supabase.from('evaluations').upsert({ ...evaluation, saved_at: new Date().toISOString() }, { onConflict: 'patient_id' }).select().maybeSingle();
-    if (!error && data) {
+    const { error: patientError } = await supabase.from('patients').update({
+      document_data: selectedPatient.document_data ?? {},
+      updated_at: new Date().toISOString(),
+    }).eq('id', selectedPatient.id);
+    if (!error && data && !patientError) {
       const savedEvaluation = data as Evaluation;
       setEvaluation(savedEvaluation);
       setEvaluationsByPatient((current) => ({ ...current, [selectedPatient.id]: savedEvaluation }));
@@ -295,11 +295,7 @@ function App() {
         <div className="patient-heading"><span>{viewMode === 'archive' ? 'Archived patients' : viewMode === 'evaluations' ? 'All patients' : 'Your patients'}</span><span>{visiblePatients.length}</span></div>
         <div className="search-box"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search patients" /></div>
         <div className="patient-list">
-          {loading ? <div className="empty-state">Loading records…</div> : visiblePatients.length ? visiblePatients.map((patient) => <button key={patient.id} className={`patient-card ${patient.id === selectedId ? 'selected' : ''}`} onClick={() => {
-            setEvaluation(null); // ✅ Clear old patient's data
-            setSelectedId(patient.id); // Select new patient
-            setViewMode('evaluations'); // ✅ Auto-switch to evaluations view
-          }}><div className="patient-avatar">{patient.name.split(' ').map((part) => part[0]).join('').slice(0, 2)}</div><div className="patient-summary"><strong>{patient.name}</strong><span>{patient.diagnosis || 'No diagnosis added'}</span></div><ChevronDown size={15} className="patient-chevron" /></button>) : <div className="empty-state">No patients found</div>}
+          {loading ? <div className="empty-state">Loading records…</div> : visiblePatients.length ? visiblePatients.map((patient) => <button key={patient.id} className={`patient-card ${patient.id === selectedId ? 'selected' : ''}`} onClick={() => setSelectedId(patient.id)}><div className="patient-avatar">{patient.name.split(' ').map((part) => part[0]).join('').slice(0, 2)}</div><div className="patient-summary"><strong>{patient.name}</strong><span>{patient.diagnosis || 'No diagnosis added'}</span></div><ChevronDown size={15} className="patient-chevron" /></button>) : <div className="empty-state">No patients found</div>}
         </div>
         <div className="sidebar-footer"><div className="profile-avatar">DA</div><div><strong>Danila May J. Oledan-Baliton</strong><span>Physical therapist</span></div></div>
       </aside>
@@ -355,7 +351,7 @@ function App() {
                 <span>PATIENT'S GOALS:</span>
               </div>
               <div className="initial-evaluation-divider" />
-              <textarea className="patient-goals-input" placeholder="Type patient goals here..." aria-label="Patient goals" name="patientGoals" value={String(patientFieldValue('patientGoals'))} onChange={(event) => updatePatientField('patientGoals', event.target.value)} />
+              <textarea key={`patientGoals-${selectedId}`} className="patient-goals-input auto-grow" onInput={autoResize} placeholder="Type patient goals here..." aria-label="Patient goals" name="patientGoals" value={String(patientFieldValue('patientGoals'))} onChange={(event) => updatePatientField('patientGoals', event.target.value)} />
             </div>
 
             <div className="initial-evaluation-block">
@@ -366,93 +362,93 @@ function App() {
               <div className="initial-evaluation-field-row">
                 <div className="initial-evaluation-label">Pain Score:</div>
                 <div className="initial-evaluation-options">
-                  <label className="check-option"><input type="checkbox" name="painScoreNoPain" checked={Boolean(selectedPatient?.document_data?.painScoreNoPain)} onChange={(event) => updatePatientField('painScoreNoPain', event.target.checked)} /><span>No pain (0/5)</span></label>
-                  <label className="check-option"><input type="checkbox" name="painScoreVeryMild" checked={Boolean(selectedPatient?.document_data?.painScoreVeryMild)} onChange={(event) => updatePatientField('painScoreVeryMild', event.target.checked)} /><span>Very mild (1/5)</span></label>
-                  <label className="check-option"><input type="checkbox" name="painScoreMild" checked={Boolean(selectedPatient?.document_data?.painScoreMild)} onChange={(event) => updatePatientField('painScoreMild', event.target.checked)} /><span>Mild (2/5)</span></label>
-                  <label className="check-option"><input type="checkbox" name="painScoreModerate" checked={Boolean(selectedPatient?.document_data?.painScoreModerate)} onChange={(event) => updatePatientField('painScoreModerate', event.target.checked)} /><span>Moderate (3/5)</span></label>
-                  <label className="check-option"><input type="checkbox" name="painScoreSevere" checked={Boolean(selectedPatient?.document_data?.painScoreSevere)} onChange={(event) => updatePatientField('painScoreSevere', event.target.checked)} /><span>Severe (4/5)</span></label>
-                  <label className="check-option"><input type="checkbox" name="painScoreVerySevere" checked={Boolean(selectedPatient?.document_data?.painScoreVerySevere)} onChange={(event) => updatePatientField('painScoreVerySevere', event.target.checked)} /><span>Very severe (5/5)</span></label>
+                  <label className="check-option"><input type="checkbox" name="painScoreNoPain" checked={patientFieldChecked('painScoreNoPain')} onChange={(event) => updatePatientField('painScoreNoPain', event.target.checked)} /><span>No pain (0/5)</span></label>
+                  <label className="check-option"><input type="checkbox" name="painScoreVeryMild" checked={patientFieldChecked('painScoreVeryMild')} onChange={(event) => updatePatientField('painScoreVeryMild', event.target.checked)} /><span>Very mild (1/5)</span></label>
+                  <label className="check-option"><input type="checkbox" name="painScoreMild" checked={patientFieldChecked('painScoreMild')} onChange={(event) => updatePatientField('painScoreMild', event.target.checked)} /><span>Mild (2/5)</span></label>
+                  <label className="check-option"><input type="checkbox" name="painScoreModerate" checked={patientFieldChecked('painScoreModerate')} onChange={(event) => updatePatientField('painScoreModerate', event.target.checked)} /><span>Moderate (3/5)</span></label>
+                  <label className="check-option"><input type="checkbox" name="painScoreSevere" checked={patientFieldChecked('painScoreSevere')} onChange={(event) => updatePatientField('painScoreSevere', event.target.checked)} /><span>Severe (4/5)</span></label>
+                  <label className="check-option"><input type="checkbox" name="painScoreVerySevere" checked={patientFieldChecked('painScoreVerySevere')} onChange={(event) => updatePatientField('painScoreVerySevere', event.target.checked)} /><span>Very severe (5/5)</span></label>
                 </div>
               </div>
 
               <div className="initial-evaluation-field-row">
                 <div className="initial-evaluation-label">Pattern:</div>
                 <div className="initial-evaluation-options">
-                  <label className="check-option"><input type="checkbox" name="patternAllTheTime" checked={Boolean(selectedPatient?.document_data?.patternAllTheTime)} onChange={(event) => updatePatientField('patternAllTheTime', event.target.checked)} /><span>All the time</span></label>
-                  <label className="check-option"><input type="checkbox" name="patternLocalized" checked={Boolean(selectedPatient?.document_data?.patternLocalized)} onChange={(event) => updatePatientField('patternLocalized', event.target.checked)} /><span>Localized</span></label>
-                  <label className="check-option"><input type="checkbox" name="patternRadiating" checked={Boolean(selectedPatient?.document_data?.patternRadiating)} onChange={(event) => updatePatientField('patternRadiating', event.target.checked)} /><span>Radiating</span></label>
-                  <label className="check-option"><input type="checkbox" name="patternConstant" checked={Boolean(selectedPatient?.document_data?.patternConstant)} onChange={(event) => updatePatientField('patternConstant', event.target.checked)} /><span>Constant</span></label>
-                  <label className="check-option"><input type="checkbox" name="patternIntermittent" checked={Boolean(selectedPatient?.document_data?.patternIntermittent)} onChange={(event) => updatePatientField('patternIntermittent', event.target.checked)} /><span>Intermittent</span></label>
-                  <label className="check-option"><input type="checkbox" name="patternHardToLocalize" checked={Boolean(selectedPatient?.document_data?.patternHardToLocalize)} onChange={(event) => updatePatientField('patternHardToLocalize', event.target.checked)} /><span>Hard to localize</span></label>
+                  <label className="check-option"><input type="checkbox" name="patternAllTheTime" checked={patientFieldChecked('patternAllTheTime')} onChange={(event) => updatePatientField('patternAllTheTime', event.target.checked)} /><span>All the time</span></label>
+                  <label className="check-option"><input type="checkbox" name="patternLocalized" checked={patientFieldChecked('patternLocalized')} onChange={(event) => updatePatientField('patternLocalized', event.target.checked)} /><span>Localized</span></label>
+                  <label className="check-option"><input type="checkbox" name="patternRadiating" checked={patientFieldChecked('patternRadiating')} onChange={(event) => updatePatientField('patternRadiating', event.target.checked)} /><span>Radiating</span></label>
+                  <label className="check-option"><input type="checkbox" name="patternConstant" checked={patientFieldChecked('patternConstant')} onChange={(event) => updatePatientField('patternConstant', event.target.checked)} /><span>Constant</span></label>
+                  <label className="check-option"><input type="checkbox" name="patternIntermittent" checked={patientFieldChecked('patternIntermittent')} onChange={(event) => updatePatientField('patternIntermittent', event.target.checked)} /><span>Intermittent</span></label>
+                  <label className="check-option"><input type="checkbox" name="patternHardToLocalize" checked={patientFieldChecked('patternHardToLocalize')} onChange={(event) => updatePatientField('patternHardToLocalize', event.target.checked)} /><span>Hard to localize</span></label>
                 </div>
               </div>
 
               <div className="initial-evaluation-field-row">
                 <div className="initial-evaluation-label">Quality of Pain:</div>
                 <div className="initial-evaluation-options">
-                  <label className="check-option"><input type="checkbox" name="qualityDiffused" checked={Boolean(selectedPatient?.document_data?.qualityDiffused)} onChange={(event) => updatePatientField('qualityDiffused', event.target.checked)} /><span>Diffused aching, poorly localized</span></label>
-                  <label className="check-option"><input type="checkbox" name="qualitySharp" checked={Boolean(selectedPatient?.document_data?.qualitySharp)} onChange={(event) => updatePatientField('qualitySharp', event.target.checked)} /><span>Sharp, bright, burning</span></label>
-                  <label className="check-option"><input type="checkbox" name="qualityDeep" checked={Boolean(selectedPatient?.document_data?.qualityDeep)} onChange={(event) => updatePatientField('qualityDeep', event.target.checked)} /><span>Deep, nagging, dull aching</span></label>
-                  <label className="check-option"><input type="checkbox" name="qualityCramping" checked={Boolean(selectedPatient?.document_data?.qualityCramping)} onChange={(event) => updatePatientField('qualityCramping', event.target.checked)} /><span>Cramping, dull aching</span></label>
+                  <label className="check-option"><input type="checkbox" name="qualityDiffused" checked={patientFieldChecked('qualityDiffused')} onChange={(event) => updatePatientField('qualityDiffused', event.target.checked)} /><span>Diffused aching, poorly localized</span></label>
+                  <label className="check-option"><input type="checkbox" name="qualitySharp" checked={patientFieldChecked('qualitySharp')} onChange={(event) => updatePatientField('qualitySharp', event.target.checked)} /><span>Sharp, bright, burning</span></label>
+                  <label className="check-option"><input type="checkbox" name="qualityDeep" checked={patientFieldChecked('qualityDeep')} onChange={(event) => updatePatientField('qualityDeep', event.target.checked)} /><span>Deep, nagging, dull aching</span></label>
+                  <label className="check-option"><input type="checkbox" name="qualityCramping" checked={patientFieldChecked('qualityCramping')} onChange={(event) => updatePatientField('qualityCramping', event.target.checked)} /><span>Cramping, dull aching</span></label>
                 </div>
               </div>
 
               <div className="initial-evaluation-field-row">
                 <div className="initial-evaluation-label">Associated Symptoms:</div>
                 <div className="initial-evaluation-options">
-                  <label className="check-option"><input type="checkbox" name="symptomSOB" checked={Boolean(selectedPatient?.document_data?.symptomSOB)} onChange={(event) => updatePatientField('symptomSOB', event.target.checked)} /><span>SOB</span></label>
-                  <label className="check-option"><input type="checkbox" name="symptomDizziness" checked={Boolean(selectedPatient?.document_data?.symptomDizziness)} onChange={(event) => updatePatientField('symptomDizziness', event.target.checked)} /><span>Dizziness</span></label>
-                  <label className="check-option"><input type="checkbox" name="symptomBurning" checked={Boolean(selectedPatient?.document_data?.symptomBurning)} onChange={(event) => updatePatientField('symptomBurning', event.target.checked)} /><span>Burning</span></label>
-                  <label className="check-option"><input type="checkbox" name="symptomNumbness" checked={Boolean(selectedPatient?.document_data?.symptomNumbness)} onChange={(event) => updatePatientField('symptomNumbness', event.target.checked)} /><span>Numbness</span></label>
-                  <label className="check-option"><input type="checkbox" name="symptomRest" checked={Boolean(selectedPatient?.document_data?.symptomRest)} onChange={(event) => updatePatientField('symptomRest', event.target.checked)} /><span>Rest</span></label>
-                  <label className="check-option"><input type="checkbox" name="symptomStress" checked={Boolean(selectedPatient?.document_data?.symptomStress)} onChange={(event) => updatePatientField('symptomStress', event.target.checked)} /><span>Stress</span></label>
-                  <label className="check-option"><input type="checkbox" name="symptomExercise" checked={Boolean(selectedPatient?.document_data?.symptomExercise)} onChange={(event) => updatePatientField('symptomExercise', event.target.checked)} /><span>Exercise</span></label>
-                  <label className="check-option"><input type="checkbox" name="symptomPosition" checked={Boolean(selectedPatient?.document_data?.symptomPosition)} onChange={(event) => updatePatientField('symptomPosition', event.target.checked)} /><span>Position</span></label>
+                  <label className="check-option"><input type="checkbox" name="symptomSOB" checked={patientFieldChecked('symptomSOB')} onChange={(event) => updatePatientField('symptomSOB', event.target.checked)} /><span>SOB</span></label>
+                  <label className="check-option"><input type="checkbox" name="symptomDizziness" checked={patientFieldChecked('symptomDizziness')} onChange={(event) => updatePatientField('symptomDizziness', event.target.checked)} /><span>Dizziness</span></label>
+                  <label className="check-option"><input type="checkbox" name="symptomBurning" checked={patientFieldChecked('symptomBurning')} onChange={(event) => updatePatientField('symptomBurning', event.target.checked)} /><span>Burning</span></label>
+                  <label className="check-option"><input type="checkbox" name="symptomNumbness" checked={patientFieldChecked('symptomNumbness')} onChange={(event) => updatePatientField('symptomNumbness', event.target.checked)} /><span>Numbness</span></label>
+                  <label className="check-option"><input type="checkbox" name="symptomRest" checked={patientFieldChecked('symptomRest')} onChange={(event) => updatePatientField('symptomRest', event.target.checked)} /><span>Rest</span></label>
+                  <label className="check-option"><input type="checkbox" name="symptomStress" checked={patientFieldChecked('symptomStress')} onChange={(event) => updatePatientField('symptomStress', event.target.checked)} /><span>Stress</span></label>
+                  <label className="check-option"><input type="checkbox" name="symptomExercise" checked={patientFieldChecked('symptomExercise')} onChange={(event) => updatePatientField('symptomExercise', event.target.checked)} /><span>Exercise</span></label>
+                  <label className="check-option"><input type="checkbox" name="symptomPosition" checked={patientFieldChecked('symptomPosition')} onChange={(event) => updatePatientField('symptomPosition', event.target.checked)} /><span>Position</span></label>
                 </div>
               </div>
 
               <div className="initial-evaluation-field-row">
                 <div className="initial-evaluation-label">Aggravating Factor:</div>
                 <div className="initial-evaluation-options">
-                  <label className="check-option"><input type="checkbox" name="aggravatingRest" checked={Boolean(selectedPatient?.document_data?.aggravatingRest)} onChange={(event) => updatePatientField('aggravatingRest', event.target.checked)} /><span>Rest</span></label>
-                  <label className="check-option"><input type="checkbox" name="aggravatingPosition" checked={Boolean(selectedPatient?.document_data?.aggravatingPosition)} onChange={(event) => updatePatientField('aggravatingPosition', event.target.checked)} /><span>Position</span></label>
-                  <label className="check-option"><input type="checkbox" name="aggravatingActivities" checked={Boolean(selectedPatient?.document_data?.aggravatingActivities)} onChange={(event) => updatePatientField('aggravatingActivities', event.target.checked)} /><span>Activities</span></label>
-                  <label className="check-option"><input type="checkbox" name="aggravatingMedications" checked={Boolean(selectedPatient?.document_data?.aggravatingMedications)} onChange={(event) => updatePatientField('aggravatingMedications', event.target.checked)} /><span>Medications</span></label>
+                  <label className="check-option"><input type="checkbox" name="aggravatingRest" checked={patientFieldChecked('aggravatingRest')} onChange={(event) => updatePatientField('aggravatingRest', event.target.checked)} /><span>Rest</span></label>
+                  <label className="check-option"><input type="checkbox" name="aggravatingPosition" checked={patientFieldChecked('aggravatingPosition')} onChange={(event) => updatePatientField('aggravatingPosition', event.target.checked)} /><span>Position</span></label>
+                  <label className="check-option"><input type="checkbox" name="aggravatingActivities" checked={patientFieldChecked('aggravatingActivities')} onChange={(event) => updatePatientField('aggravatingActivities', event.target.checked)} /><span>Activities</span></label>
+                  <label className="check-option"><input type="checkbox" name="aggravatingMedications" checked={patientFieldChecked('aggravatingMedications')} onChange={(event) => updatePatientField('aggravatingMedications', event.target.checked)} /><span>Medications</span></label>
                 </div>
               </div>
 
               <div className="initial-evaluation-field-row">
                 <div className="initial-evaluation-label">Relieving Factor:</div>
                 <div className="initial-evaluation-options">
-                  <label className="check-option"><input type="checkbox" name="relievingAM" checked={Boolean(selectedPatient?.document_data?.relievingAM)} onChange={(event) => updatePatientField('relievingAM', event.target.checked)} /><span>AM</span></label>
-                  <label className="check-option"><input type="checkbox" name="relievingDayProgress" checked={Boolean(selectedPatient?.document_data?.relievingDayProgress)} onChange={(event) => updatePatientField('relievingDayProgress', event.target.checked)} /><span>As the day progresses</span></label>
-                  <label className="check-option"><input type="checkbox" name="relievingPM" checked={Boolean(selectedPatient?.document_data?.relievingPM)} onChange={(event) => updatePatientField('relievingPM', event.target.checked)} /><span>PM</span></label>
-                  <label className="check-option"><input type="checkbox" name="relievingRest" checked={Boolean(selectedPatient?.document_data?.relievingRest)} onChange={(event) => updatePatientField('relievingRest', event.target.checked)} /><span>Rest</span></label>
-                  <label className="check-option"><input type="checkbox" name="relievingPosition" checked={Boolean(selectedPatient?.document_data?.relievingPosition)} onChange={(event) => updatePatientField('relievingPosition', event.target.checked)} /><span>Position</span></label>
+                  <label className="check-option"><input type="checkbox" name="relievingAM" checked={patientFieldChecked('relievingAM')} onChange={(event) => updatePatientField('relievingAM', event.target.checked)} /><span>AM</span></label>
+                  <label className="check-option"><input type="checkbox" name="relievingDayProgress" checked={patientFieldChecked('relievingDayProgress')} onChange={(event) => updatePatientField('relievingDayProgress', event.target.checked)} /><span>As the day progresses</span></label>
+                  <label className="check-option"><input type="checkbox" name="relievingPM" checked={patientFieldChecked('relievingPM')} onChange={(event) => updatePatientField('relievingPM', event.target.checked)} /><span>PM</span></label>
+                  <label className="check-option"><input type="checkbox" name="relievingRest" checked={patientFieldChecked('relievingRest')} onChange={(event) => updatePatientField('relievingRest', event.target.checked)} /><span>Rest</span></label>
+                  <label className="check-option"><input type="checkbox" name="relievingPosition" checked={patientFieldChecked('relievingPosition')} onChange={(event) => updatePatientField('relievingPosition', event.target.checked)} /><span>Position</span></label>
                 </div>
               </div>
 
               <div className="initial-evaluation-field-row">
                 <div className="initial-evaluation-label">Symptoms are Better:</div>
                 <div className="initial-evaluation-options">
-                  <label className="check-option"><input type="checkbox" name="betterAM" checked={Boolean(selectedPatient?.document_data?.betterAM)} onChange={(event) => updatePatientField('betterAM', event.target.checked)} /><span>AM</span></label>
-                  <label className="check-option"><input type="checkbox" name="betterDayProgress" checked={Boolean(selectedPatient?.document_data?.betterDayProgress)} onChange={(event) => updatePatientField('betterDayProgress', event.target.checked)} /><span>As the day progresses</span></label>
-                  <label className="check-option"><input type="checkbox" name="betterPM" checked={Boolean(selectedPatient?.document_data?.betterPM)} onChange={(event) => updatePatientField('betterPM', event.target.checked)} /><span>PM</span></label>
+                  <label className="check-option"><input type="checkbox" name="betterAM" checked={patientFieldChecked('betterAM')} onChange={(event) => updatePatientField('betterAM', event.target.checked)} /><span>AM</span></label>
+                  <label className="check-option"><input type="checkbox" name="betterDayProgress" checked={patientFieldChecked('betterDayProgress')} onChange={(event) => updatePatientField('betterDayProgress', event.target.checked)} /><span>As the day progresses</span></label>
+                  <label className="check-option"><input type="checkbox" name="betterPM" checked={patientFieldChecked('betterPM')} onChange={(event) => updatePatientField('betterPM', event.target.checked)} /><span>PM</span></label>
                 </div>
               </div>
 
               <div className="initial-evaluation-field-row">
                 <div className="initial-evaluation-label">Symptoms are Worse:</div>
                 <div className="initial-evaluation-options">
-                  <label className="check-option"><input type="checkbox" name="worseAM" checked={Boolean(selectedPatient?.document_data?.worseAM)} onChange={(event) => updatePatientField('worseAM', event.target.checked)} /><span>AM</span></label>
-                  <label className="check-option"><input type="checkbox" name="worseDayProgress" checked={Boolean(selectedPatient?.document_data?.worseDayProgress)} onChange={(event) => updatePatientField('worseDayProgress', event.target.checked)} /><span>As the day progresses</span></label>
-                  <label className="check-option"><input type="checkbox" name="worsePM" checked={Boolean(selectedPatient?.document_data?.worsePM)} onChange={(event) => updatePatientField('worsePM', event.target.checked)} /><span>PM</span></label>
+                  <label className="check-option"><input type="checkbox" name="worseAM" checked={patientFieldChecked('worseAM')} onChange={(event) => updatePatientField('worseAM', event.target.checked)} /><span>AM</span></label>
+                  <label className="check-option"><input type="checkbox" name="worseDayProgress" checked={patientFieldChecked('worseDayProgress')} onChange={(event) => updatePatientField('worseDayProgress', event.target.checked)} /><span>As the day progresses</span></label>
+                  <label className="check-option"><input type="checkbox" name="worsePM" checked={patientFieldChecked('worsePM')} onChange={(event) => updatePatientField('worsePM', event.target.checked)} /><span>PM</span></label>
                 </div>
               </div>
 
               <div className="initial-evaluation-field-row medication-row">
                 <div className="initial-evaluation-label">Medication(s):</div>
-                <input className="medication-input" type="text" placeholder="Type medication(s) here..." aria-label="Medication list" name="medications" value={String(patientFieldValue('medications'))} onChange={(event) => updatePatientField('medications', event.target.value)} />
+                <textarea key={`medications-${selectedId}`} className="medication-input auto-grow" rows={1} onInput={autoResize} placeholder="Type medication(s) here..." aria-label="Medication list" name="medications" value={String(patientFieldValue('medications'))} onChange={(event) => updatePatientField('medications', event.target.value)} />
               </div>
             </div>
           </section>
@@ -464,14 +460,14 @@ function App() {
               </div>
 
               <div className="vital-signs-inline-row">
-                <div className="vital-signs-field"><span>BP:</span><input type="text" placeholder="" /></div>
+                <div className="vital-signs-field"><span>BP:</span><input type="text" value={String(patientFieldValue('vitalsBP'))} onChange={(event) => updatePatientField('vitalsBP', event.target.value)} placeholder="" /></div>
                 <div className="vital-signs-unit">mmHg</div>
-                <div className="vital-signs-field"><span>PR:</span><input type="text" placeholder="" /></div>
+                <div className="vital-signs-field"><span>PR:</span><input type="text" value={String(patientFieldValue('vitalsPR'))} onChange={(event) => updatePatientField('vitalsPR', event.target.value)} placeholder="" /></div>
                 <div className="vital-signs-unit">bpm</div>
               </div>
 
               <div className="vital-signs-inline-row dual-row">
-                <div className="vital-signs-field"><span>RR:</span><input type="text" placeholder="" /></div>
+                <div className="vital-signs-field"><span>RR:</span><input type="text" value={String(patientFieldValue('vitalsRR'))} onChange={(event) => updatePatientField('vitalsRR', event.target.value)} placeholder="" /></div>
                 <div className="vital-signs-unit">cpm</div>
               </div>
 
@@ -495,13 +491,17 @@ function App() {
                   <tbody>
                     {Array.from({ length: 6 }).map((_, index) => (
                       <tr key={index}>
-                        <td><input type="text" className="rom-cell-input" aria-label={`Joint ${index + 1}`} /></td>
-                        <td><input type="text" className="rom-cell-input" aria-label={`Motion ${index + 1}`} /></td>
-                        <td><input type="text" className="rom-cell-input" aria-label={`Endfeel ${index + 1}`} /></td>
-                        <td><input type="text" className="rom-cell-input" aria-label={`Arom ${index + 1}`} /></td>
-                        <td><input type="text" className="rom-cell-input" aria-label={`Diff ${index + 1}`} /></td>
-                        <td><input type="text" className="rom-cell-input" aria-label={`Prom ${index + 1}`} /></td>
-                        <td><input type="text" className="rom-cell-input" aria-label={`Diff ${index + 1}`} /></td>
+                        {romFields.map((field) => (
+                          <td key={field}>
+                            <input
+                              type="text"
+                              className="rom-cell-input"
+                              aria-label={`${romLabels[field]} ${index + 1}`}
+                              value={String(patientFieldValue(`rom${field}${index}`))}
+                              onChange={(event) => updatePatientField(`rom${field}${index}`, event.target.value)}
+                            />
+                          </td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>
@@ -510,18 +510,18 @@ function App() {
 
               <div className="vital-signs-significance">
                 <span>Significance:</span>
-                <input className="significance-input" type="text" placeholder="" aria-label="Significance" />
+                <textarea key={`vitalsSignificance-${selectedId}`} className="significance-input auto-grow" rows={1} onInput={autoResize} placeholder="" aria-label="Significance" value={String(patientFieldValue('vitalsSignificance'))} onChange={(event) => updatePatientField('vitalsSignificance', event.target.value)} />
               </div>
 
               <div className="vital-signs-row">
                 <span className="vital-signs-label">MANUAL MUSCLE TESTING:</span>
               </div>
 
-              <textarea className="manual-muscle-box" aria-label="Manual muscle testing" placeholder="" />
+              <textarea className="manual-muscle-box auto-grow" aria-label="Manual muscle testing" placeholder="" value={String(patientFieldValue('manualMuscleTesting'))} onChange={(event) => updatePatientField('manualMuscleTesting', event.target.value)} />
 
               <div className="vital-signs-significance secondary-significance">
                 <span>Significance:</span>
-                <input className="significance-input" type="text" placeholder="" aria-label="Manual muscle testing significance" />
+                <textarea key={`manualMuscleSignificance-${selectedId}`} className="significance-input auto-grow" rows={1} onInput={autoResize} placeholder="" aria-label="Manual muscle testing significance" value={String(patientFieldValue('manualMuscleSignificance'))} onChange={(event) => updatePatientField('manualMuscleSignificance', event.target.value)} />
               </div>
             </div>
           </section>
@@ -532,46 +532,46 @@ function App() {
                 <div className="goals-line-row">
                   <span className="goals-label">A: PROBLEM LIST:</span>
                 </div>
-                <textarea className="goals-problem-box" aria-label="Problem list" />
+                <textarea className="goals-problem-box auto-grow" aria-label="Problem list" value={String(patientFieldValue('problemList'))} onChange={(event) => updatePatientField('problemList', event.target.value)} />
               </div>
 
               <div className="goals-form-block">
                 <div className="goals-line-row">
                   <span className="goals-label">LONG TERM GOALS:</span>
                   <span className="goals-middle-text">(Achievable within</span>
-                  <input className="goals-inline-input" type="text" aria-label="Long term goals treatment sessions" />
+                  <textarea key={`longTermGoalsSessions-${selectedId}`} className="goals-inline-input auto-grow" rows={1} onInput={autoResize} aria-label="Long term goals treatment sessions" value={String(patientFieldValue('longTermGoalsSessions'))} onChange={(event) => updatePatientField('longTermGoalsSessions', event.target.value)} />
                   <span className="goals-middle-text">treatment sessions)</span>
                 </div>
-                <textarea className="goals-box" aria-label="Long term goals" />
+                <textarea className="goals-box auto-grow" aria-label="Long term goals" value={String(patientFieldValue('longTermGoalsText'))} onChange={(event) => updatePatientField('longTermGoalsText', event.target.value)} />
               </div>
 
               <div className="goals-form-block">
                 <div className="goals-line-row">
                   <span className="goals-label">SHORT TERM GOALS:</span>
                   <span className="goals-middle-text">(Achievable within</span>
-                  <input className="goals-inline-input" type="text" aria-label="Short term goals treatment sessions" />
+                  <textarea key={`shortTermGoalsSessions-${selectedId}`} className="goals-inline-input auto-grow" rows={1} onInput={autoResize} aria-label="Short term goals treatment sessions" value={String(patientFieldValue('shortTermGoalsSessions'))} onChange={(event) => updatePatientField('shortTermGoalsSessions', event.target.value)} />
                   <span className="goals-middle-text">treatment sessions)</span>
                 </div>
-                <textarea className="goals-box" aria-label="Short term goals" />
+                <textarea className="goals-box auto-grow" aria-label="Short term goals" value={String(patientFieldValue('shortTermGoalsText'))} onChange={(event) => updatePatientField('shortTermGoalsText', event.target.value)} />
                 <div className="short-term-goals-footer">
                   <div className="short-term-goals-impression-row">
                     <span className="short-term-goals-impression">PT IMPRESSION: REHABILITATION POTENTIAL:</span>
                     <div className="short-term-goals-options">
                       <label className="checkbox-option">
-                        <input type="checkbox" />
+                        <input type="checkbox" checked={patientFieldChecked('rehabPotentialGood')} onChange={(event) => updatePatientField('rehabPotentialGood', event.target.checked)} />
                         <span>Good</span>
                       </label>
                       <label className="checkbox-option">
-                        <input type="checkbox" />
+                        <input type="checkbox" checked={patientFieldChecked('rehabPotentialFair')} onChange={(event) => updatePatientField('rehabPotentialFair', event.target.checked)} />
                         <span>Fair</span>
                       </label>
                       <label className="checkbox-option">
-                        <input type="checkbox" />
+                        <input type="checkbox" checked={patientFieldChecked('rehabPotentialPoor')} onChange={(event) => updatePatientField('rehabPotentialPoor', event.target.checked)} />
                         <span>Poor</span>
                       </label>
                     </div>
                   </div>
-                  <input className="short-term-goals-input-line" type="text" aria-label="PT impression notes" />
+                  <textarea key={`ptImpressionNotes-${selectedId}`} className="short-term-goals-input-line auto-grow" rows={1} onInput={autoResize} aria-label="PT impression notes" value={String(patientFieldValue('ptImpressionNotes'))} onChange={(event) => updatePatientField('ptImpressionNotes', event.target.value)} />
                 </div>
               </div>
             </div>
@@ -583,22 +583,22 @@ function App() {
                 <span className="treatment-plan-label">P: PLAN TREATMENT:</span>
                 <span className="treatment-plan-text">Frequency:</span>
                 <label className="treatment-plan-option">
-                  <input type="checkbox" />
+                  <input type="checkbox" checked={patientFieldChecked('freqDaily')} onChange={(event) => updatePatientField('freqDaily', event.target.checked)} />
                   <span>Daily</span>
                 </label>
                 <label className="treatment-plan-option">
-                  <input type="checkbox" />
+                  <input type="checkbox" checked={patientFieldChecked('freqEOD')} onChange={(event) => updatePatientField('freqEOD', event.target.checked)} />
                   <span>EOD</span>
                 </label>
                 <label className="treatment-plan-option">
-                  <input type="checkbox" />
+                  <input type="checkbox" checked={patientFieldChecked('freqOthers')} onChange={(event) => updatePatientField('freqOthers', event.target.checked)} />
                   <span>Others</span>
                 </label>
-                <input className="treatment-plan-inline-input" type="text" aria-label="Other treatment frequency" />
+                <textarea key={`freqOthersText-${selectedId}`} className="treatment-plan-inline-input auto-grow" rows={1} onInput={autoResize} aria-label="Other treatment frequency" value={String(patientFieldValue('freqOthersText'))} onChange={(event) => updatePatientField('freqOthersText', event.target.value)} />
               </div>
 
               <div className="treatment-plan-box-wrap">
-                <textarea className="treatment-plan-box" aria-label="Plan treatment text" />
+                <textarea className="treatment-plan-box auto-grow" aria-label="Plan treatment text" value={String(patientFieldValue('planTreatmentText'))} onChange={(event) => updatePatientField('planTreatmentText', event.target.value)} />
               </div>
 
               <div className="treatment-plan-row treatment-plan-row-header">
@@ -606,11 +606,11 @@ function App() {
               </div>
 
               <div className="treatment-plan-box-wrap">
-                <textarea className="treatment-plan-box" aria-label="Home instructions and recommendations" />
+                <textarea className="treatment-plan-box auto-grow" aria-label="Home instructions and recommendations" value={String(patientFieldValue('homeInstructionsText'))} onChange={(event) => updatePatientField('homeInstructionsText', event.target.value)} />
               </div>
 
               <div className="treatment-plan-signature-row">
-                <input className="treatment-plan-signature-line" type="text" aria-label="Physical Therapist/Date" />
+                <textarea key={`treatmentPlanSignature-${selectedId}`} className="treatment-plan-signature-line auto-grow" rows={1} onInput={autoResize} aria-label="Physical Therapist/Date" value={String(patientFieldValue('treatmentPlanSignature'))} onChange={(event) => updatePatientField('treatmentPlanSignature', event.target.value)} />
                 <span>Physical Therapist/Date</span>
               </div>
             </div>
@@ -631,16 +631,16 @@ function App() {
 
             <div className="problem-goals-block">
               <div className="problem-goals-title">PRESENT PROBLEM LIST:</div>
-              <textarea className="problem-goals-box" aria-label="Present problem list" />
+              <textarea className="problem-goals-box auto-grow" aria-label="Present problem list" value={String(patientFieldValue('presentProblemList'))} onChange={(event) => updatePatientField('presentProblemList', event.target.value)} />
             </div>
 
             <div className="problem-goals-block">
               <div className="problem-goals-title">RECOMMENDATION / GOALS:</div>
-              <textarea className="problem-goals-box" aria-label="Recommendation and goals" />
+              <textarea className="problem-goals-box auto-grow" aria-label="Recommendation and goals" value={String(patientFieldValue('recommendationGoals'))} onChange={(event) => updatePatientField('recommendationGoals', event.target.value)} />
             </div>
 
             <div className="problem-goals-signature-row">
-              <input className="problem-goals-signature-line" type="text" aria-label="Physical therapist in charge" />
+              <textarea key={`problemGoalsSignature-${selectedId}`} className="problem-goals-signature-line auto-grow" rows={1} onInput={autoResize} aria-label="Physical therapist in charge" value={String(patientFieldValue('problemGoalsSignature'))} onChange={(event) => updatePatientField('problemGoalsSignature', event.target.value)} />
               <div className="problem-goals-signature-text">
                 <span>PHYSICAL THERAPIST IN-CHARGE</span>
                 <span>LIC.# 23167</span>
@@ -665,20 +665,16 @@ function App() {
 
             <div className="medical-certificate-body">
               <p>
-                This is to certify that patient <input className="medical-fill medical-fill-name" type="text" aria-label="Patient name" />,{' '}
-                    <input className="medical-fill medical-fill-age" type="text" aria-label="Patient age" /> years old, resides in{' '}
-                    <input className="medical-fill medical-fill-address" type="text" aria-label="Patient address" /> Eastern Samar, diagnosed with{' '}
-                    <input className="medical-fill medical-fill-diagnosis" type="text" aria-label="Diagnosis" />.
+                This is to certify that patient <textarea key={`certName-${selectedId}`} className="medical-fill medical-fill-name auto-grow" rows={1} onInput={autoResize} aria-label="Patient name" value={String(patientFieldValue('certName'))} onChange={(event) => updatePatientField('certName', event.target.value)} />,{' '}
+                <textarea key={`certAge-${selectedId}`} className="medical-fill medical-fill-age auto-grow" rows={1} onInput={autoResize} aria-label="Patient age" value={String(patientFieldValue('certAge'))} onChange={(event) => updatePatientField('certAge', event.target.value)} /> years old, resides in{' '}
+                <textarea key={`certAddress-${selectedId}`} className="medical-fill medical-fill-address auto-grow" rows={1} onInput={autoResize} aria-label="Patient address" value={String(patientFieldValue('certAddress'))} onChange={(event) => updatePatientField('certAddress', event.target.value)} /> Eastern Samar, diagnosed with{' '}
+                <textarea key={`certDiagnosis-${selectedId}`} className="medical-fill medical-fill-diagnosis auto-grow" rows={1} onInput={autoResize} aria-label="Diagnosis" value={String(patientFieldValue('certDiagnosis'))} onChange={(event) => updatePatientField('certDiagnosis', event.target.value)} />.
               </p>
 
               <p>
-                Samar, diagnosed with <input className="medical-fill medical-fill-diagnosis" type="text" aria-label="Diagnosis" />.
-              </p>
-
-              <p>
-                He was advised by <input className="medical-fill medical-fill-doctor" type="text" aria-label="Doctor" /> to undergo Physical
-                Therapy sessions at Borongan Physical Therapy Center. Received this certification this day of
-                <input className="medical-fill medical-fill-date" type="text" aria-label="Certification date" />.
+                He was advised by <textarea key={`certDoctor-${selectedId}`} className="medical-fill medical-fill-doctor auto-grow" rows={1} onInput={autoResize} aria-label="Doctor" value={String(patientFieldValue('certDoctor'))} onChange={(event) => updatePatientField('certDoctor', event.target.value)} /> to undergo Physical
+                Therapy sessions at Borongan Physical Therapy Center. Received this certification this day of{' '}
+                <textarea key={`certDate-${selectedId}`} className="medical-fill medical-fill-date auto-grow" rows={1} onInput={autoResize} aria-label="Certification date" value={String(patientFieldValue('certDate'))} onChange={(event) => updatePatientField('certDate', event.target.value)} />.
               </p>
 
               <p>
@@ -721,39 +717,39 @@ function App() {
               <div className="progress-report-form">
                 <div className="progress-report-row progress-report-row-form">
                   <span className="progress-report-label">Name:</span>
-                  <input className="progress-report-line progress-report-line-form" type="text" aria-label="Name" />
+                  <textarea key={`progressName-${selectedId}`} className="progress-report-line progress-report-line-form auto-grow" rows={1} onInput={autoResize} aria-label="Name" value={String(patientFieldValue('progressName'))} onChange={(event) => updatePatientField('progressName', event.target.value)} />
                 </div>
                 <div className="progress-report-row progress-report-row-form">
                   <span className="progress-report-label">Evaluation Date:</span>
-                  <input className="progress-report-line progress-report-line-form" type="text" aria-label="Evaluation Date" />
+                  <textarea key={`progressEvalDate-${selectedId}`} className="progress-report-line progress-report-line-form auto-grow" rows={1} onInput={autoResize} aria-label="Evaluation Date" value={String(patientFieldValue('progressEvalDate'))} onChange={(event) => updatePatientField('progressEvalDate', event.target.value)} />
                 </div>
                 <div className="progress-report-row progress-report-row-form">
                   <span className="progress-report-label">Diagnosis:</span>
-                  <input className="progress-report-line progress-report-line-form" type="text" aria-label="Diagnosis" />
+                  <textarea key={`progressDiagnosis-${selectedId}`} className="progress-report-line progress-report-line-form auto-grow" rows={1} onInput={autoResize} aria-label="Diagnosis" value={String(patientFieldValue('progressDiagnosis'))} onChange={(event) => updatePatientField('progressDiagnosis', event.target.value)} />
                 </div>
                 <div className="progress-report-row progress-report-row-form">
                   <span className="progress-report-label">Referring Physician:</span>
-                  <input className="progress-report-line progress-report-line-form" type="text" aria-label="Referring Physician" />
+                  <textarea key={`progressReferringPhysician-${selectedId}`} className="progress-report-line progress-report-line-form auto-grow" rows={1} onInput={autoResize} aria-label="Referring Physician" value={String(patientFieldValue('progressReferringPhysician'))} onChange={(event) => updatePatientField('progressReferringPhysician', event.target.value)} />
                 </div>
                 <div className="progress-report-row progress-report-row-form">
                   <span className="progress-report-label">Date:</span>
-                  <input className="progress-report-line progress-report-line-form" type="text" aria-label="Date"/>
+                  <textarea key={`progressDate-${selectedId}`} className="progress-report-line progress-report-line-form auto-grow" rows={1} onInput={autoResize} aria-label="Date" value={String(patientFieldValue('progressDate'))} onChange={(event) => updatePatientField('progressDate', event.target.value)} />
                 </div>
               </div>
 
               <div className="progress-report-section">
                 <h3>TREATMENT GIVEN:</h3>
-                 <textarea className="problem-goals-box" aria-label="Treatment given" />
+                 <textarea className="problem-goals-box auto-grow" aria-label="Treatment given" value={String(patientFieldValue('treatmentGiven'))} onChange={(event) => updatePatientField('treatmentGiven', event.target.value)} />
               </div>
 
               <div className="progress-report-section">
                 <h3>PREVIOUS PROBLEM LIST:</h3>
-               <textarea className="problem-goals-box" aria-label="Previous problem list" />
+               <textarea className="problem-goals-box auto-grow" aria-label="Previous problem list" value={String(patientFieldValue('previousProblemList'))} onChange={(event) => updatePatientField('previousProblemList', event.target.value)} />
               </div>
 
               <div className="progress-report-section progress-report-section-nested">
                 <h3>PROGRESS EVALUATION:</h3>
-                <textarea className="problem-goals-box" aria-label="Progress evaluation" />
+                <textarea className="problem-goals-box auto-grow" aria-label="Progress evaluation" value={String(patientFieldValue('progressEvaluationText'))} onChange={(event) => updatePatientField('progressEvaluationText', event.target.value)} />
               </div>
             </div>
           </section>
@@ -773,7 +769,7 @@ function App() {
 
             <div className="estimate-cost-date-row">
               <span>DATE:</span>
-              <input className="estimate-cost-date-line" type="text" aria-label="Date" />
+              <textarea key={`estimateDate-${selectedId}`} className="estimate-cost-date-line auto-grow" rows={1} onInput={autoResize} aria-label="Date" value={String(patientFieldValue('estimateDate'))} onChange={(event) => updatePatientField('estimateDate', event.target.value)} />
             </div>
 
             <div className="estimate-cost-body">
@@ -783,42 +779,42 @@ function App() {
 
               <div className="estimate-cost-row">
                 <span className="estimate-cost-label">PATIENT'S NAME:</span>
-                <input className="estimate-cost-line" type="text" aria-label="Patient name" />
+                <textarea key={`estimatePatientName-${selectedId}`} className="estimate-cost-line auto-grow" rows={1} onInput={autoResize} aria-label="Patient name" value={String(patientFieldValue('estimatePatientName'))} onChange={(event) => updatePatientField('estimatePatientName', event.target.value)} />
               </div>
               <div className="estimate-cost-row">
                 <span className="estimate-cost-label">DIAGNOSIS:</span>
-                <input className="estimate-cost-line" type="text" aria-label="Diagnosis" />
+                <textarea key={`estimateDiagnosis-${selectedId}`} className="estimate-cost-line auto-grow" rows={1} onInput={autoResize} aria-label="Diagnosis" value={String(patientFieldValue('estimateDiagnosis'))} onChange={(event) => updatePatientField('estimateDiagnosis', event.target.value)} />
               </div>
               <div className="estimate-cost-row">
                 <span className="estimate-cost-label">PROFESSIONAL FEE:</span>
-                <input className="estimate-cost-line" type="text" aria-label="Professional fee" />
+                <textarea key={`estimateProfessionalFee-${selectedId}`} className="estimate-cost-line auto-grow" rows={1} onInput={autoResize} aria-label="Professional fee" value={String(patientFieldValue('estimateProfessionalFee'))} onChange={(event) => updatePatientField('estimateProfessionalFee', event.target.value)} />
               </div>
               <div className="estimate-cost-row">
                 <span className="estimate-cost-label">MACHINE REQUIRED:</span>
-                <input className="estimate-cost-line" type="text" aria-label="Machine required" />
+                <textarea key={`estimateMachineRequired-${selectedId}`} className="estimate-cost-line auto-grow" rows={1} onInput={autoResize} aria-label="Machine required" value={String(patientFieldValue('estimateMachineRequired'))} onChange={(event) => updatePatientField('estimateMachineRequired', event.target.value)} />
               </div>
 
               <div className="estimate-cost-machine-list">
-                <label className="estimate-cost-check"><input type="checkbox" /><span className="estimate-cost-check-text">Electrical Stimulator</span><span className="estimate-cost-check-line" /></label><label className="estimate-cost-check"><input type="checkbox" /><span className="estimate-cost-check-text">TENS Machine</span><span className="estimate-cost-check-line" /></label><label className="estimate-cost-check"><input type="checkbox" /><span className="estimate-cost-check-text">HMP Machine</span><span className="estimate-cost-check-line" /></label><label className="estimate-cost-check"><input type="checkbox" /><span className="estimate-cost-check-text">Ultrasound Machine</span><span className="estimate-cost-check-line" /></label><label className="estimate-cost-check"><input type="checkbox" /><span className="estimate-cost-check-text">IRR Machine</span><span className="estimate-cost-check-line" /></label><label className="estimate-cost-check"><input type="checkbox" /><span className="estimate-cost-check-text">Paraffin Machine</span><span className="estimate-cost-check-line" /></label>
+                <label className="estimate-cost-check"><input type="checkbox" checked={patientFieldChecked('machineElectricalStimulator')} onChange={(event) => updatePatientField('machineElectricalStimulator', event.target.checked)} /><span className="estimate-cost-check-text">Electrical Stimulator</span><span className="estimate-cost-check-line" /></label><label className="estimate-cost-check"><input type="checkbox" checked={patientFieldChecked('machineTENS')} onChange={(event) => updatePatientField('machineTENS', event.target.checked)} /><span className="estimate-cost-check-text">TENS Machine</span><span className="estimate-cost-check-line" /></label><label className="estimate-cost-check"><input type="checkbox" checked={patientFieldChecked('machineHMP')} onChange={(event) => updatePatientField('machineHMP', event.target.checked)} /><span className="estimate-cost-check-text">HMP Machine</span><span className="estimate-cost-check-line" /></label><label className="estimate-cost-check"><input type="checkbox" checked={patientFieldChecked('machineUltrasound')} onChange={(event) => updatePatientField('machineUltrasound', event.target.checked)} /><span className="estimate-cost-check-text">Ultrasound Machine</span><span className="estimate-cost-check-line" /></label><label className="estimate-cost-check"><input type="checkbox" checked={patientFieldChecked('machineIRR')} onChange={(event) => updatePatientField('machineIRR', event.target.checked)} /><span className="estimate-cost-check-text">IRR Machine</span><span className="estimate-cost-check-line" /></label><label className="estimate-cost-check"><input type="checkbox" checked={patientFieldChecked('machineParaffin')} onChange={(event) => updatePatientField('machineParaffin', event.target.checked)} /><span className="estimate-cost-check-text">Paraffin Machine</span><span className="estimate-cost-check-line" /></label>
               </div>
 
               <div className="estimate-cost-lower-block">
                 <div className="estimate-cost-lower-row">
                   <span className="estimate-cost-lower-label">FREQUENCY OF THERAPY SESSIONS:</span>
-                  <input className="estimate-cost-lower-line" type="text" aria-label="Frequency of therapy sessions" />
+                  <textarea key={`estimateFrequency-${selectedId}`} className="estimate-cost-lower-line auto-grow" rows={1} onInput={autoResize} aria-label="Frequency of therapy sessions" value={String(patientFieldValue('estimateFrequency'))} onChange={(event) => updatePatientField('estimateFrequency', event.target.value)} />
                 </div>
                 <div className="estimate-cost-lower-row">
                   <span className="estimate-cost-lower-label">TOTAL NUMBER OF THERAPY SESSIONS:</span>
-                  <input className="estimate-cost-lower-line" type="text" aria-label="Total number of therapy sessions" />
+                  <textarea key={`estimateTotalSessions-${selectedId}`} className="estimate-cost-lower-line auto-grow" rows={1} onInput={autoResize} aria-label="Total number of therapy sessions" value={String(patientFieldValue('estimateTotalSessions'))} onChange={(event) => updatePatientField('estimateTotalSessions', event.target.value)} />
                 </div>
                 <div className="estimate-cost-lower-row">
                   <span className="estimate-cost-lower-label">PERIOD OF THERAPY SESSIONS:</span>
-                  <input className="estimate-cost-lower-line" type="text" aria-label="Period of therapy sessions" />
+                  <textarea key={`estimatePeriod-${selectedId}`} className="estimate-cost-lower-line auto-grow" rows={1} onInput={autoResize} aria-label="Period of therapy sessions" value={String(patientFieldValue('estimatePeriod'))} onChange={(event) => updatePatientField('estimatePeriod', event.target.value)} />
                 </div>
 
                 <div className="estimate-cost-total-row">
                   <span className="estimate-cost-total-label">TOTAL AMOUNT:</span>
-                  <input className="estimate-cost-total-line" type="text" aria-label="Total amount" />
+                  <textarea key={`estimateTotalAmount-${selectedId}`} className="estimate-cost-total-line auto-grow" rows={1} onInput={autoResize} aria-label="Total amount" value={String(patientFieldValue('estimateTotalAmount'))} onChange={(event) => updatePatientField('estimateTotalAmount', event.target.value)} />
                 </div>
 
                 <div className="estimate-cost-signature-box">
