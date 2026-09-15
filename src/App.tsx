@@ -88,7 +88,6 @@ function App() {
   const visiblePatients = useMemo(() => {
     const filtered = patients.filter((patient) => {
       if (viewMode === 'archive') return patient.status === 'archived';
-      if (viewMode === 'evaluations') return true;
       return patient.status === 'active';
     });
 
@@ -350,7 +349,7 @@ function App() {
           <button className={`nav-item ${viewMode === 'archive' ? 'active' : ''}`} onClick={() => setViewMode('archive')}><Archive size={17} /> Archive <span className="nav-count">{patients.filter((patient) => patient.status === 'archived').length}</span></button>
         </nav>
         <div className="sidebar-divider" />
-        <div className="patient-heading"><span>{viewMode === 'archive' ? 'Archived patients' : viewMode === 'evaluations' ? 'All patients' : 'Your patients'}</span><span>{visiblePatients.length}</span></div>
+        <div className="patient-heading"><span>{viewMode === 'archive' ? 'Archived patients' : viewMode === 'evaluations' ? 'Active patients' : 'Your patients'}</span><span>{visiblePatients.length}</span></div>
         <div className="search-box"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search patients" /></div>
         <div className="patient-list">
           {loading ? <div className="empty-state">Loading records…</div> : visiblePatients.length ? visiblePatients.map((patient) => <button key={patient.id} className={`patient-card ${patient.id === selectedId ? 'selected' : ''}`} onClick={() => setSelectedId(patient.id)}><div className="patient-avatar">{patient.name.split(' ').map((part) => part[0]).join('').slice(0, 2)}</div><div className="patient-summary"><strong>{patient.name}</strong><span>{patient.diagnosis || 'No diagnosis added'}</span></div><ChevronDown size={15} className="patient-chevron" /></button>) : <div className="empty-state">No patients found</div>}
@@ -885,11 +884,11 @@ function App() {
           </section>
 
           <section className="pt-notes-page page-break-page-10" data-print-section="ptNotes">
-            <header className="pt-notes-header">
+            <header className="progress-report-header">
               <div className="document-logo-wrap">
                 <img className="document-logo" src={clinicLogo} alt="Clinic logo" />
               </div>
-              <div className="pt-notes-branding">
+              <div className="progress-report-branding">
                 <h1>BORONGAN PHYSICAL THERAPY CENTER</h1>
                 <p>REAL STREET, BARANGAY SONGCO, BORONGAN EASTERN SAMAR</p>
                 <p>+639293310697 / +639085982802 / +6392743043238</p>
