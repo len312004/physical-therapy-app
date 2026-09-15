@@ -114,10 +114,35 @@ function App() {
       return;
     }
 
-    const cachedEvaluation = evaluationsByPatient[selectedId] ?? emptyEvaluation(selectedId);
-    setEvaluation(cachedEvaluation);
-    void loadEvaluation(selectedId);
+    // ✅ CLEAR OLD DATA FIRST - This prevents showing stale data
+    setEvaluation(null);
+    
+    // ✅ THEN load new patient's data
+    const loadNewPatientData = async () => {
+      const cachedEvaluation = evaluationsByPatient[selectedId] ?? emptyEvaluation(selectedId);
+      setEvaluation(cachedEvaluation);
+      await loadEvaluation(selectedId);
+    };
+    
+    loadNewPatientData();
   }, [selectedId]);
+
+  // ✅ FIX 3: Validation check to prevent data mismatch
+  // If somehow evaluation patient_id doesn't match selectedId, fix it immediately
+  useEffect(() => {
+    if (evaluation && evaluation.patient_id !== selectedId) {
+      console.warn('🔄 Data mismatch detected - fixing...');
+      console.warn('Selected Patient ID:', selectedId);
+      console.warn('Evaluation Patient ID:', evaluation.patient_id);
+      
+      // Clear evaluation and reload correct one
+      setEvaluation(null);
+      if (selectedId) {
+        const correctEval = evaluationsByPatient[selectedId] ?? emptyEvaluation(selectedId);
+        setEvaluation(correctEval);
+      }
+    }
+  }, [evaluation, selectedId, evaluationsByPatient]);
 
   async function loadPatients() {
     setLoading(true);
@@ -270,7 +295,11 @@ function App() {
         <div className="patient-heading"><span>{viewMode === 'archive' ? 'Archived patients' : viewMode === 'evaluations' ? 'All patients' : 'Your patients'}</span><span>{visiblePatients.length}</span></div>
         <div className="search-box"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search patients" /></div>
         <div className="patient-list">
-          {loading ? <div className="empty-state">Loading records…</div> : visiblePatients.length ? visiblePatients.map((patient) => <button key={patient.id} className={`patient-card ${patient.id === selectedId ? 'selected' : ''}`} onClick={() => setSelectedId(patient.id)}><div className="patient-avatar">{patient.name.split(' ').map((part) => part[0]).join('').slice(0, 2)}</div><div className="patient-summary"><strong>{patient.name}</strong><span>{patient.diagnosis || 'No diagnosis added'}</span></div><ChevronDown size={15} className="patient-chevron" /></button>) : <div className="empty-state">No patients found</div>}
+          {loading ? <div className="empty-state">Loading records…</div> : visiblePatients.length ? visiblePatients.map((patient) => <button key={patient.id} className={`patient-card ${patient.id === selectedId ? 'selected' : ''}`} onClick={() => {
+            setEvaluation(null); // ✅ Clear old patient's data
+            setSelectedId(patient.id); // Select new patient
+            setViewMode('evaluations'); // ✅ Auto-switch to evaluations view
+          }}><div className="patient-avatar">{patient.name.split(' ').map((part) => part[0]).join('').slice(0, 2)}</div><div className="patient-summary"><strong>{patient.name}</strong><span>{patient.diagnosis || 'No diagnosis added'}</span></div><ChevronDown size={15} className="patient-chevron" /></button>) : <div className="empty-state">No patients found</div>}
         </div>
         <div className="sidebar-footer"><div className="profile-avatar">DA</div><div><strong>Danila May J. Oledan-Baliton</strong><span>Physical therapist</span></div></div>
       </aside>
