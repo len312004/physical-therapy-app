@@ -395,6 +395,10 @@ body {
   break-before: page;
   page-break-before: always;
 }
+.page-break-page-10 {
+  break-before: page;
+  page-break-before: always;
+}
 .initial-evaluation-header {
   display: flex;
   align-items: center;
@@ -961,7 +965,7 @@ body {
   border: none;
   border-radius: 0;
   box-shadow: none;
-  padding: 18px 30px 26px;
+  padding: 40px 50px 40px;  /* ← INCREASED from 18px 30px 26px */
   margin: 0;
   min-height: 520px;
   font-family: "Times New Roman", Times, serif;
@@ -975,7 +979,7 @@ body {
   padding-top: 8px;
 }
 .medical-certificate-title {
-  margin: 16px 0 20px;
+  margin: 20px 0 30px;  /* ← INCREASED from 16px 0 20px */
   text-align: center;
   font-size: 24px;
   font-weight: 700;
@@ -985,43 +989,48 @@ body {
 }
 .medical-certificate-body {
   max-width: 840px;
-  margin: 0 auto;
-  padding: 0 8px;
+  margin: 20px auto;  /* ← INCREASED from 0 auto */
+  padding: 0 20px;  /* ← INCREASED from 0 8px */
   font-size: 15px;
-  line-height: 1.7;
+  line-height: 1.8;  /* ← INCREASED from 1.7 */
   font-family: "Times New Roman", Times, serif;
   color: #111111;
 }
 .medical-certificate-body p {
   margin: 0 0 14px;
   display: block;
-  text-align: justify;
-  text-indent: 28px;      /* indents only the first line of each paragraph */
+  text-align: justify;       /* was: left */
+  text-align-last: justify;  /* new: stretches single/last lines too */
   white-space: normal;
   font-weight: 400;
 }
 .medical-line {
   display: block;
   margin: 0;
-  min-height: 1.7em;
+  min-height: 1.9em;
+  text-align: justify;       /* new */
+  text-align-last: justify;  /* new */
 }
 .medical-line-open {
   padding-left: 8px;
 }
+ 
 .medical-line-indent {
   padding-left: 34px;
 }
+ 
 .medical-line-center {
   text-align: center;
 }
+ 
 .medical-line-date {
   padding-left: 180px;
   margin-top: 2px;
 }
+ 
 .medical-fill {
   display: inline-block;
   min-width: 90px;
-  overflow: hidden;
   border: none;
   border-bottom: 1.5px solid #111111;
   vertical-align: baseline;
@@ -1042,8 +1051,9 @@ body {
 .medical-fill-doctor { min-width: 180px; }
 .medical-fill-date { min-width: 180px; }
 .medical-fill-place { min-width: 120px; }
+ 
 .medical-certificate-signature {
-  margin-top: 34px;
+  margin-top: 40px;  /* ← INCREASED from 34px */
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -1057,6 +1067,7 @@ body {
   justify-content: flex-end;
   width: 100%;
 }
+ 
 .signature-name {
   display: inline-block;
   font-size: 17px;
@@ -1067,6 +1078,7 @@ body {
   line-height: 1.5;
   text-align: right;
 }
+ 
 .signature-meta {
   display: flex;
   flex-direction: column;
@@ -1075,6 +1087,7 @@ body {
   min-width: 260px;
   margin-right: 26px;
 }
+ 
 .signature-title {
   font-size: 12px;
   font-weight: 700;
@@ -1083,6 +1096,7 @@ body {
   margin-top: 6px;
   text-align: center;
 }
+ 
 .signature-license {
   font-size: 12px;
   margin-top: 4px;
@@ -1147,8 +1161,8 @@ body {
   color: #111111;
 }
 .progress-report-form {
-  width: 100%;
-  margin: 0 0 18px;
+  width: min(86%, 680px);
+  margin: 0 auto 18px;
 }
 .progress-report-row {
   display: flex;
@@ -1227,17 +1241,13 @@ body {
   font: inherit;
   color: #111111;
   outline: none;
-  resize: none;
-  display: block;
-  box-sizing: border-box;   /* so padding doesn't push height past your set values */
-  text-align: left;         /* ensures no inherited center alignment */
 }
 .estimate-cost-page {
   background: #ffffff;
   border: none;
   border-radius: 0;
   box-shadow: none;
-  padding: 18px 60px 20px;   /* was 18px 28px 20px — increased side padding */
+  padding: 18px 28px 20px;
   margin: 0;
   color: #111111;
   font-family: "Times New Roman", Times, serif;
@@ -1300,7 +1310,7 @@ body {
   padding: 0;
 }
 .estimate-cost-body {
-  max-width: 560px;   /* was 860px — narrower content column */
+  max-width: 860px;
   margin: 0 auto;
 }
 .estimate-cost-intro {
@@ -1474,174 +1484,99 @@ body {
   font-weight: 700;
   line-height: 1.3;
 }
-.page-break-page-10 {
-  break-before: page;
-  page-break-before: always;
-}
 
-/* PT Notes — dated, two-column ruled-paper layout.
-   This REPLACES the earlier .pt-notes-box rules — remove any old
-   .pt-notes-box CSS block from your index.css and use this instead. */
-
-.pt-notes-body {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 0 8px;
+/* PT Notes page */
+.pt-notes-page {
   background: #ffffff;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0 0 20px;
+  margin: 0;
+  color: #111111;
+  font-family: "Times New Roman", Times, serif;
 }
-
+.pt-notes-page > * {
+  padding-left: 18px;
+  padding-right: 18px;
+}
+.pt-notes-title {
+  margin: 10px 0 0;
+  padding: 0 18px 10px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #111111;
+  border-bottom: 2px solid #111111;
+}
+.pt-notes-body {
+  margin-top: 16px;
+}
 .pt-notes-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 28px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
-
 .pt-notes-entry {
   display: flex;
   flex-direction: column;
-  border-top: 2px solid #111111;
-  padding-top: 8px;
+  gap: 8px;
 }
-
 .pt-notes-entry-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 10px;
 }
 .pt-notes-entry-header label {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
+  text-transform: uppercase;
   color: #111111;
-  white-space: nowrap;
+  flex-shrink: 0;
 }
 .pt-notes-date-input {
   flex: 1;
   border: none;
   border-bottom: 2px solid #111111;
   background: transparent;
-  font-family: inherit;
   font-size: 15px;
-  padding: 2px 0;
+  font-family: inherit;
+  padding: 4px 0;
   outline: none;
   color: #111111;
 }
 .pt-notes-remove {
   background: transparent;
-  border: none;
-  color: var(--danger, #d24858);
+  border: 1px solid var(--danger-soft);
+  color: var(--danger);
   cursor: pointer;
-  padding: 2px;
-  display: flex;
+  padding: 4px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
 }
-
+.pt-notes-remove:hover {
+  background: var(--danger-soft);
+}
 .pt-notes-entry-text {
   width: 100%;
-  min-height: 168px;
-  border: none;
-  resize: none;
-  overflow: hidden;
-  font-family: inherit;
+  min-height: 90px;
+  border: 1.5px solid #111111;
+  background: #ffffff;
   font-size: 15px;
-  line-height: 28px;
-  padding: 4px 0 0;
-  outline: none;
-  background-color: transparent;
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent,
-    transparent 27px,
-    #cfcfcf 28px
-  );
-  box-sizing: border-box;
-}
-.pt-notes-entry-text::placeholder {
-  color: #9ca3af;
-}
-
-.pt-notes-add {
-  margin-top: 20px;
-}
-
-/* Hide add/remove controls when printing — only the written content should print */
-@media print {
-  .no-print {
-    display: none !important;
-  }
-  .pt-notes-entry {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-}
-
-@media (max-width: 700px) {
-  .pt-notes-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Quick-access modal version of the same dated entries */
-.notes-modal-entry {
-  border-top: 1px solid var(--border, #e2e8f2);
-  padding-top: 10px;
-  margin-top: 14px;
-}
-.notes-modal-entry:first-child {
-  border-top: none;
-  margin-top: 0;
-}
-.notes-modal-entry-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-.notes-modal-entry-header label {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--text-soft, #475573);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.notes-modal-date-input {
-  flex: 1;
-  border: 1px solid var(--border-strong, #cfd8ea);
-  border-radius: var(--radius-sm, 10px);
-  padding: 6px 10px;
-  font-size: 13.5px;
   font-family: inherit;
-  color: var(--text, #0f1b33);
-  outline: none;
-}
-.notes-modal-date-input:focus {
-  border-color: var(--primary, #1d6cb9);
-}
-.notes-modal-textarea {
-  width: 100%;
-  min-height: 100px;
-  border: 1px solid var(--border-strong, #cfd8ea);
-  border-radius: var(--radius-sm, 10px);
-  padding: 12px;
-  font-size: 14px;
-  line-height: 1.6;
-  font-family: inherit;
-  color: var(--text, #0f1b33);
-  background: var(--surface-muted, #f0f3f9);
+  padding: 10px;
   resize: none;
-  overflow: hidden;
   outline: none;
-  box-sizing: border-box;
-  transition: all 0.15s;
+  color: #111111;
 }
-.notes-modal-textarea:focus {
-  border-color: var(--primary, #1d6cb9);
-  background: white;
-  box-shadow: 0 0 0 3px var(--primary-soft, #e6f0fb);
+.pt-notes-add {
+  margin-top: 18px;
 }
-.notes-modal-textarea::placeholder {
-  color: var(--text-muted, #8493ad);
-}
+
 .record-footer {
   display: flex; justify-content: space-between; align-items: center;
   padding: 14px 20px; background: var(--surface); border: 1px solid var(--border);
@@ -1707,16 +1642,112 @@ body {
 }
 
 /* Print */
+/* 🔧 PRINT FIX - Add this to replace the print section in your index.css */
+
 @media print {
-  body { background: white; }
-  .app-shell { grid-template-columns: 1fr; display: block; }
-  .sidebar, .topbar, .top-actions, .evaluation-actions, .record-footer, .print-wrap, .record-card-header button, .mobile-menu, .evaluation-grid, .evaluation-head { display: none !important; }
-  .main-content { padding: 0; max-width: 100%; }
-  .record-layout { display: block; }
-  .record-card, .evaluation-card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; page-break-inside: avoid; }
-  .evaluation-card textarea { border: 1px solid #ccc; background: white; }
-  .page-break-page-2 { break-before: page; page-break-before: always; }
-  [data-print-section] { display: block; }
+  /* Page settings */
+  @page {
+    size: A4;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Reset everything for print */
+  * {
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background: white;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Remove sidebar and UI elements */
+  .app-shell {
+    grid-template-columns: 1fr;
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .sidebar, .topbar, .top-actions, .evaluation-actions, .record-footer, .print-wrap, .record-card-header button, .mobile-menu, .evaluation-grid, .evaluation-head {
+    display: none !important;
+  }
+
+  /* Hide any in-app "no print" controls (e.g. add/remove note buttons) */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Hide the Netlify "Powered by Netlify" badge on every printed page */
+  a[href*="netlify.app"],
+  a[href*="netlify.com"],
+  a[href*="netlify"],
+  [id*="netlify-badge"],
+  [class*="netlify-badge"],
+  [id*="netlify"],
+  [class*="netlify"] {
+    display: none !important;
+  }
+
+  /* Make main content full page width */
+  .main-content {
+    padding: 0;
+    max-width: 100%;
+    width: 100%;
+    margin: 0;
+    overflow: visible;
+  }
+
+  .record-layout {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Document container full page */
+  .record-card,
+  .evaluation-card {
+    box-shadow: none;
+    border: 1px solid #ddd;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    max-width: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 40px 40px;
+  }
+
+  .evaluation-card textarea {
+    border: 1px solid #ccc;
+    background: white;
+  }
+
+  /* Page breaks */
+  .page-break-page-2,
+  .page-break-page-3,
+  .page-break-page-4,
+  .page-break-page-5,
+  .page-break-page-6,
+  .page-break-page-7,
+  .page-break-page-8,
+  .page-break-page-9,
+  .page-break-page-10 {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  /* Show/hide sections based on print settings */
+  [data-print-section] {
+    display: block;
+  }
+
   [data-print-section="patient"] { display: var(--print-patient, block); }
   [data-print-section="subjective"] { display: var(--print-subjective, none); }
   [data-print-section="objective"] { display: var(--print-objective, none); }
@@ -1728,57 +1759,44 @@ body {
   [data-print-section="medicalCertificate"] { display: var(--print-medicalCertificate, none); }
   [data-print-section="progressReport"] { display: var(--print-progressReport, none); }
   [data-print-section="estimateCost"] { display: var(--print-estimateCost, none); }
-  .patient-info-document { border: none; box-shadow: none; background: white; min-height: auto; margin: 0 auto; }
+  [data-print-section="ptNotes"] { display: var(--print-ptNotes, none); }
+
+  /* Document styles */
+  .patient-info-document {
+    border: none;
+    box-shadow: none;
+    background: white;
+    min-height: auto;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    max-width: 100%;
+  }
 
   .initial-evaluation-page {
     margin-top: 0;
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+  }
+
+  .initial-evaluation-page > * {
+    padding-left: 40px;
+    padding-right: 40px;
   }
 
   .initial-evaluation-title {
     margin-top: 8px;
     padding-top: 8px;
   }
-}.goals-problem-box,
-.goals-box,
-.treatment-plan-box,
-.problem-goals-box,
-.manual-muscle-box {
-  overflow: hidden;
-  resize: none;
-}
-/* Removes the diagonal drag-resize handle and internal scrollbar from every
-   auto-growing single-line field (the underline "fill in the blank" inputs).
-   Paste this at the end of index.css. */
 
-.medical-fill,
-.progress-report-line,
-.estimate-cost-line,
-.estimate-cost-lower-line,
-.estimate-cost-date-line,
-.estimate-cost-total-line,
-.goals-inline-input,
-.treatment-plan-inline-input,
-.treatment-plan-signature-line,
-.problem-goals-signature-line,
-.significance-input,
-.medication-input,
-.short-term-goals-input-line,
-.patient-goals-input {
-  resize: none;
-  overflow: hidden;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  font-family: inherit;
-}
+  /* Hide scrollbars */
+  ::-webkit-scrollbar {
+    display: none;
+  }
 
-/* Also removes it from the large multi-line boxes, in case any browser
-   still shows a corner grip on them despite resize already being set. */
-.goals-problem-box,
-.goals-box,
-.treatment-plan-box,
-.problem-goals-box,
-.manual-muscle-box,
-.pt-notes-box {
-  resize: none;
-  overflow: hidden;
+  /* Remove all max-widths that might constrain content */
+  * {
+    max-width: 100% !important;
+  }
 }
