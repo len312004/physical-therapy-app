@@ -1750,7 +1750,8 @@ body {
   [data-print-section="problemGoals"] { display: var(--print-problemGoals, none); }
   [data-print-section="medicalCertificate"] { display: var(--print-medicalCertificate, none); }
   [data-print-section="progressReport"] { display: var(--print-progressReport, none); }
-  [data-print-section="estimateCost"] { display: var(--print-estimateCost, none); }
+  [data-print-section="ptNotes"] { display: var(--print-ptNotes, none); }
+  .no-print { display: none !important; }
   .patient-info-document { border: none; box-shadow: none; background: white; min-height: auto; margin: 0 auto; }
 
   .initial-evaluation-page {
