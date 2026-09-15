@@ -1461,6 +1461,8 @@ body {
   outline: none;
   padding: 0;
   font-family: inherit;
+   width: 100%;
+  box-sizing: border-box;
 }
 .estimate-cost-signature-role {
   font-size: 15px;
@@ -1479,9 +1481,29 @@ body {
   page-break-before: always;
 }
 
-/*  Notes — dated, two-column ruled-paper layout.
-   This REPLACES the earlier .pt-notes-box rules — remove any old
-   .pt-notes-box CSS block from your index.css and use this instead. */
+/* PT Notes — page container matching the other document pages, plus the
+   dated, two-column ruled-paper layout for entries below the title. */
+
+.pt-notes-page {
+  background: #ffffff;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0 28px 20px;
+  margin: 0;
+  color: #111111;
+  font-family: "Times New Roman", Times, serif;
+}
+
+.pt-notes-title {
+  margin: 18px 0 18px;
+  text-align: center;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #111111;
+}
 
 .pt-notes-body {
   max-width: 900px;
