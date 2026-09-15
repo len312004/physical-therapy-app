@@ -27,6 +27,26 @@ function autoResize(event: React.FormEvent<HTMLTextAreaElement>) {
   el.style.height = `${el.scrollHeight}px`;
 }
 
+function resizeInputWidth(el: HTMLInputElement) {
+  const span = document.createElement('span');
+  const style = window.getComputedStyle(el);
+  span.style.font = style.font;
+  span.style.letterSpacing = style.letterSpacing;
+  span.style.whiteSpace = 'pre';
+  span.style.position = 'absolute';
+  span.style.visibility = 'hidden';
+  span.textContent = el.value || el.placeholder || '';
+  document.body.appendChild(span);
+  const measured = span.offsetWidth;
+  document.body.removeChild(span);
+  const minWidth = parseFloat(style.minWidth) || 60;
+  el.style.width = `${Math.max(minWidth, measured + 14)}px`;
+}
+
+function autoWidth(event: React.FormEvent<HTMLInputElement>) {
+  resizeInputWidth(event.currentTarget);
+}
+
 type Patient = {
   id: string;
   name: string;
@@ -168,7 +188,7 @@ function App() {
     void loadEvaluation(selectedId);
   }, [selectedId]);
 
-  // Resize every auto-growing textarea whenever the selected patient (and thus its saved values) changes.
+  // Resize every auto-growing textarea and auto-width input whenever the selected patient (and thus its saved values) changes.
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       const areas = document.querySelectorAll<HTMLTextAreaElement>('textarea.auto-grow');
@@ -176,6 +196,8 @@ function App() {
         el.style.height = 'auto';
         el.style.height = `${el.scrollHeight}px`;
       });
+      const inputs = document.querySelectorAll<HTMLInputElement>('input.auto-width');
+      inputs.forEach((el) => resizeInputWidth(el));
     }, 0);
     return () => window.clearTimeout(timeout);
   }, [selectedId, selectedPatient?.document_data]);
@@ -722,16 +744,16 @@ function App() {
 
             <div className="medical-certificate-body">
               <p>
-                This is to certify that patient <textarea key={`certName-${selectedId}`} className="medical-fill medical-fill-name auto-grow" rows={1} onInput={autoResize} aria-label="Patient name" value={String(patientFieldValue('certName'))} onChange={(event) => updatePatientField('certName', event.target.value)} />,{' '}
-                <textarea key={`certAge-${selectedId}`} className="medical-fill medical-fill-age auto-grow" rows={1} onInput={autoResize} aria-label="Patient age" value={String(patientFieldValue('certAge'))} onChange={(event) => updatePatientField('certAge', event.target.value)} /> years old, resides in{' '}
-                <textarea key={`certAddress-${selectedId}`} className="medical-fill medical-fill-address auto-grow" rows={1} onInput={autoResize} aria-label="Patient address" value={String(patientFieldValue('certAddress'))} onChange={(event) => updatePatientField('certAddress', event.target.value)} /> Eastern Samar, diagnosed with{' '}
-                <textarea key={`certDiagnosis-${selectedId}`} className="medical-fill medical-fill-diagnosis auto-grow" rows={1} onInput={autoResize} aria-label="Diagnosis" value={String(patientFieldValue('certDiagnosis'))} onChange={(event) => updatePatientField('certDiagnosis', event.target.value)} />.
+                This is to certify that patient <input type="text" key={`certName-${selectedId}`} className="medical-fill medical-fill-name auto-width" onInput={autoWidth} aria-label="Patient name" value={String(patientFieldValue('certName'))} onChange={(event) => updatePatientField('certName', event.target.value)} />,{' '}
+                <input type="text" key={`certAge-${selectedId}`} className="medical-fill medical-fill-age auto-width" onInput={autoWidth} aria-label="Patient age" value={String(patientFieldValue('certAge'))} onChange={(event) => updatePatientField('certAge', event.target.value)} /> years old, resides in{' '}
+                <input type="text" key={`certAddress-${selectedId}`} className="medical-fill medical-fill-address auto-width" onInput={autoWidth} aria-label="Patient address" value={String(patientFieldValue('certAddress'))} onChange={(event) => updatePatientField('certAddress', event.target.value)} /> Eastern Samar, diagnosed with{' '}
+                <input type="text" key={`certDiagnosis-${selectedId}`} className="medical-fill medical-fill-diagnosis auto-width" onInput={autoWidth} aria-label="Diagnosis" value={String(patientFieldValue('certDiagnosis'))} onChange={(event) => updatePatientField('certDiagnosis', event.target.value)} />.
               </p>
 
               <p>
-                He was advised by <textarea key={`certDoctor-${selectedId}`} className="medical-fill medical-fill-doctor auto-grow" rows={1} onInput={autoResize} aria-label="Doctor" value={String(patientFieldValue('certDoctor'))} onChange={(event) => updatePatientField('certDoctor', event.target.value)} /> to undergo Physical
+                He was advised by <input type="text" key={`certDoctor-${selectedId}`} className="medical-fill medical-fill-doctor auto-width" onInput={autoWidth} aria-label="Doctor" value={String(patientFieldValue('certDoctor'))} onChange={(event) => updatePatientField('certDoctor', event.target.value)} /> to undergo Physical
                 Therapy sessions at Borongan Physical Therapy Center. Received this certification this day of{' '}
-                <textarea key={`certDate-${selectedId}`} className="medical-fill medical-fill-date auto-grow" rows={1} onInput={autoResize} aria-label="Certification date" value={String(patientFieldValue('certDate'))} onChange={(event) => updatePatientField('certDate', event.target.value)} />.
+                <input type="text" key={`certDate-${selectedId}`} className="medical-fill medical-fill-date auto-width" onInput={autoWidth} aria-label="Certification date" value={String(patientFieldValue('certDate'))} onChange={(event) => updatePatientField('certDate', event.target.value)} />.
               </p>
 
               <p>

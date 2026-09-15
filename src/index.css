@@ -1025,7 +1025,6 @@ body {
   border: none;
   border-bottom: 1.5px solid #111111;
   vertical-align: baseline;
-  height: 1.2em;
   margin: 0 0.16em 0.08em;
   position: relative;
   bottom: -0.06em;
@@ -1033,7 +1032,8 @@ body {
   padding: 0;
   font: inherit;
   color: #111111;
-  outline: none;
+  outline: none;  
+  box-sizing: content-box;
 }
 .medical-fill-name { min-width: 190px; }
 .medical-fill-age { min-width: 84px; }
@@ -1588,13 +1588,14 @@ body {
 
 /* Hide add/remove controls when printing — only the written content should print */
 @media print {
-  .no-print {
-    display: none !important;
-  }
-  .pt-notes-entry {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
+  [data-print-section="ptNotes"] { display: var(--print-ptNotes, none); }
+}
+.pt-notes-entry {
+  display: flex;
+  flex-direction: column;
+  border-top: none;
+  padding-top: 0;
+  margin-top: 8px;
 }
 
 @media (max-width: 700px) {
