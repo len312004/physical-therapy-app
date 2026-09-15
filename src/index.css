@@ -1479,92 +1479,168 @@ body {
   page-break-before: always;
 }
 
-/* PT Notes page — add this block to your main CSS file */
+/* PT Notes — dated, two-column ruled-paper layout.
+   This REPLACES the earlier .pt-notes-box rules — remove any old
+   .pt-notes-box CSS block from your index.css and use this instead. */
 
-.page-break-page-10 {
-  break-before: page;
-  page-break-before: always;
-}
-
-.pt-notes-page {
-  background: #ffffff;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  padding: 18px 30px 26px;
-  margin: 0;
-  min-height: 520px;
-  font-family: "Times New Roman", Times, serif;
-  color: #111111;
-}
-.pt-notes-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding-top: 8px;
-}
-.pt-notes-branding {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  color: #111111;
-}
-.pt-notes-branding h1 {
-  margin: 0;
-  font-size: clamp(18px, 2vw, 22px);
-  line-height: 1.15;
-  font-weight: 700;
-  letter-spacing: 0.2px;
-  text-transform: uppercase;
-  color: #111111;
-}
-.pt-notes-branding p {
-  margin: 3px 0 0;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.4;
-  color: #111111;
-}
-.pt-notes-title {
-  margin: 16px 0 20px;
-  text-align: center;
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #111111;
-  font-family: "Times New Roman", Times, serif;
-}
 .pt-notes-body {
-  max-width: 840px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 0 8px;
 }
-.pt-notes-box {
-  width: 100%;
-  min-height: 200px;
-  border: 2px solid #111111;
-  background: #f7f7f7;
+
+.pt-notes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px 40px;
+}
+
+.pt-notes-entry {
+  display: flex;
+  flex-direction: column;
+  border-top: 2px solid #111111;
+  padding-top: 8px;
+}
+
+.pt-notes-entry-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.pt-notes-entry-header label {
   font-size: 15px;
+  font-weight: 700;
+  color: #111111;
+  white-space: nowrap;
+}
+.pt-notes-date-input {
+  flex: 1;
+  border: none;
+  border-bottom: 2px solid #111111;
+  background: transparent;
+  font-family: inherit;
+  font-size: 15px;
+  padding: 2px 0;
+  outline: none;
+  color: #111111;
+}
+.pt-notes-remove {
+  background: transparent;
+  border: none;
+  color: var(--danger, #d24858);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+}
+
+.pt-notes-entry-text {
+  width: 100%;
+  min-height: 168px;
+  border: none;
+  resize: none;
+  overflow: hidden;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 28px;
+  padding: 4px 0 0;
+  outline: none;
+  background-color: transparent;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 27px,
+    #cfcfcf 28px
+  );
+  box-sizing: border-box;
+}
+.pt-notes-entry-text::placeholder {
+  color: #9ca3af;
+}
+
+.pt-notes-add {
+  margin-top: 20px;
+}
+
+/* Hide add/remove controls when printing — only the written content should print */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .pt-notes-entry {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+@media (max-width: 700px) {
+  .pt-notes-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Quick-access modal version of the same dated entries */
+.notes-modal-entry {
+  border-top: 1px solid var(--border, #e2e8f2);
+  padding-top: 10px;
+  margin-top: 14px;
+}
+.notes-modal-entry:first-child {
+  border-top: none;
+  margin-top: 0;
+}
+.notes-modal-entry-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.notes-modal-entry-header label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-soft, #475573);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.notes-modal-date-input {
+  flex: 1;
+  border: 1px solid var(--border-strong, #cfd8ea);
+  border-radius: var(--radius-sm, 10px);
+  padding: 6px 10px;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: var(--text, #0f1b33);
+  outline: none;
+}
+.notes-modal-date-input:focus {
+  border-color: var(--primary, #1d6cb9);
+}
+.notes-modal-textarea {
+  width: 100%;
+  min-height: 100px;
+  border: 1px solid var(--border-strong, #cfd8ea);
+  border-radius: var(--radius-sm, 10px);
+  padding: 12px;
+  font-size: 14px;
   line-height: 1.6;
   font-family: inherit;
-  padding: 14px;
+  color: var(--text, #0f1b33);
+  background: var(--surface-muted, #f0f3f9);
   resize: none;
   overflow: hidden;
   outline: none;
   box-sizing: border-box;
+  transition: all 0.15s;
 }
-.pt-notes-box::placeholder {
-  color: #6b7280;
+.notes-modal-textarea:focus {
+  border-color: var(--primary, #1d6cb9);
+  background: white;
+  box-shadow: 0 0 0 3px var(--primary-soft, #e6f0fb);
 }
-
-/* Add "ptNotes" to your existing print visibility rules (inside @media print) */
-[data-print-section="ptNotes"] { display: var(--print-ptNotes, block); }
-
-/* Add ".pt-notes-page" alongside your other page classes in the print reset, e.g.: */
-/* .patient-info-document, .initial-evaluation-page, .pt-notes-page { ... } */
+.notes-modal-textarea::placeholder {
+  color: var(--text-muted, #8493ad);
+}
 .record-footer {
   display: flex; justify-content: space-between; align-items: center;
   padding: 14px 20px; background: var(--surface); border: 1px solid var(--border);
@@ -1668,4 +1744,40 @@ body {
 .manual-muscle-box {
   overflow: hidden;
   resize: none;
+}
+/* Removes the diagonal drag-resize handle and internal scrollbar from every
+   auto-growing single-line field (the underline "fill in the blank" inputs).
+   Paste this at the end of index.css. */
+
+.medical-fill,
+.progress-report-line,
+.estimate-cost-line,
+.estimate-cost-lower-line,
+.estimate-cost-date-line,
+.estimate-cost-total-line,
+.goals-inline-input,
+.treatment-plan-inline-input,
+.treatment-plan-signature-line,
+.problem-goals-signature-line,
+.significance-input,
+.medication-input,
+.short-term-goals-input-line,
+.patient-goals-input {
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: inherit;
+}
+
+/* Also removes it from the large multi-line boxes, in case any browser
+   still shows a corner grip on them despite resize already being set. */
+.goals-problem-box,
+.goals-box,
+.treatment-plan-box,
+.problem-goals-box,
+.manual-muscle-box,
+.pt-notes-box {
+  resize: none;
+  overflow: hidden;
 }

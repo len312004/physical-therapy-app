@@ -13,6 +13,7 @@ import {
   Printer,
   Search,
   Save,
+  StickyNote,
   Stethoscope,
   Trash2,
   X,
@@ -52,7 +53,7 @@ type Evaluation = {
   saved_at?: string;
 };
 
-type SectionKey = 'patient' | 'subjective' | 'objective' | 'assessment' | 'plan' | 'vitals' | 'goals' | 'problemGoals' | 'medicalCertificate' | 'progressReport' | 'estimateCost';
+type SectionKey = 'patient' | 'subjective' | 'objective' | 'assessment' | 'plan' | 'vitals' | 'goals' | 'problemGoals' | 'medicalCertificate' | 'progressReport' | 'estimateCost' | 'ptNotes';
 
 const demoPatients = [
   { name: 'John Smith', diagnosis: 'Lower back pain', age: 45, gender: 'Male', phone: '(555) 123-4567', email: 'john.smith@email.com', address: '18 Cedar Lane' },
@@ -76,7 +77,8 @@ function App() {
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [showPrintMenu, setShowPrintMenu] = useState(false);
-  const [printSections, setPrintSections] = useState<Record<SectionKey, boolean>>({ patient: true, subjective: true, objective: true, assessment: true, plan: true, vitals: true, goals: true, problemGoals: true, medicalCertificate: true, progressReport: true, estimateCost: true });
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [printSections, setPrintSections] = useState<Record<SectionKey, boolean>>({ patient: true, subjective: true, objective: true, assessment: true, plan: true, vitals: true, goals: true, problemGoals: true, medicalCertificate: true, progressReport: true, estimateCost: true, ptNotes: true });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -111,6 +113,45 @@ function App() {
       document_data: { ...(patient.document_data ?? {}), [key]: value },
       updated_at: new Date().toISOString(),
     } : patient));
+  };
+
+  type NotesEntry = { date: string; text: string };
+
+  const getNotesEntries = (): NotesEntry[] => {
+    const raw = patientFieldValue('ptNotesEntries');
+    if (typeof raw === 'string' && raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length) return parsed;
+      } catch {
+        // fall through to default
+      }
+    }
+    return [{ date: '', text: '' }];
+  };
+
+  const setNotesEntries = (entries: NotesEntry[]) => {
+    updatePatientField('ptNotesEntries', JSON.stringify(entries));
+  };
+
+  const updateNotesEntry = (index: number, field: 'date' | 'text', value: string) => {
+    const entries = getNotesEntries();
+    const next = entries.map((entry, i) => (i === index ? { ...entry, [field]: value } : entry));
+    setNotesEntries(next);
+  };
+
+  const addNotesEntry = () => {
+    const entries = getNotesEntries();
+    setNotesEntries([...entries, { date: '', text: '' }]);
+  };
+
+  const removeNotesEntry = (index: number) => {
+    const entries = getNotesEntries();
+    if (entries.length <= 1) {
+      setNotesEntries([{ date: '', text: '' }]);
+      return;
+    }
+    setNotesEntries(entries.filter((_, i) => i !== index));
   };
 
   useEffect(() => {
@@ -175,6 +216,23 @@ function App() {
       setEvaluationsByPatient((existing) => ({ ...existing, [current.patient_id]: nextEvaluation }));
       return nextEvaluation;
     });
+  }
+
+  async function saveNotes() {
+    if (!selectedPatient) return;
+    setSaving(true);
+    const { error } = await supabase.from('patients').update({
+      document_data: selectedPatient.document_data ?? {},
+      updated_at: new Date().toISOString(),
+    }).eq('id', selectedPatient.id);
+    if (!error) {
+      setNotice('Notes saved.');
+      setPatients((current) => current.map((patient) => patient.id === selectedPatient.id ? { ...patient, updated_at: new Date().toISOString() } : patient));
+    } else {
+      setNotice('The notes could not be saved.');
+    }
+    setSaving(false);
+    window.setTimeout(() => setNotice(''), 2400);
   }
 
   async function saveEvaluation() {
@@ -273,7 +331,7 @@ function App() {
     const nextPrintSections = { ...printSections };
     setPrintSections(nextPrintSections);
     const root = document.documentElement;
-    (['patient', 'subjective', 'objective', 'assessment', 'plan', 'vitals', 'goals', 'problemGoals', 'medicalCertificate', 'progressReport', 'estimateCost'] as SectionKey[]).forEach((section) => {
+    (['patient', 'subjective', 'objective', 'assessment', 'plan', 'vitals', 'goals', 'problemGoals', 'medicalCertificate', 'progressReport', 'estimateCost', 'ptNotes'] as SectionKey[]).forEach((section) => {
       root.style.setProperty(`--print-${section}`, nextPrintSections[section] ? 'block' : 'none');
     });
     window.print();
@@ -301,7 +359,7 @@ function App() {
       </aside>
 
       <main className="main-content">
-        <header className="topbar"><div><p className="eyebrow">{viewMode === 'archive' ? 'Records / Archive' : viewMode === 'evaluations' ? 'Records / Evaluations' : 'Records / Overview'}</p><h1>{selectedPatient ? selectedPatient.name : 'Patient records'}</h1></div><div className="top-actions"><div className="save-status">{notice ? <><span className="status-dot" /> {notice}</> : 'All changes saved locally'}</div><button className="icon-button mobile-menu" onClick={() => setSidebarOpen(true)}><Menu size={19} /></button><button className="outline-button" onClick={() => { setEditingPatient(selectedPatient); setShowPatientModal(true); }} disabled={!selectedPatient}><Pencil size={16} /> Edit</button><button className="outline-button archive-header" onClick={() => void toggleArchive(selectedPatient)} disabled={!selectedPatient}>{selectedPatient?.status === 'active' ? <Archive size={16} /> : <ArchiveRestore size={16} />}{selectedPatient?.status === 'active' ? 'Archive patient' : 'Restore patient'}</button><button className="primary-button save-header" onClick={() => void saveEvaluation()} disabled={!selectedPatient || saving}><Save size={16} /> {saving ? 'Saving…' : 'Save evaluation'}</button><div className="print-wrap"><button className="dark-button" onClick={() => setShowPrintMenu((current) => !current)} disabled={!selectedPatient}><Printer size={16} /> Print selected <ChevronDown size={14} /></button>{showPrintMenu && <div className="print-menu"><div className="print-menu-title">Select pages to print</div>{(['patient', 'objective', 'vitals', 'goals', 'plan', 'problemGoals', 'medicalCertificate', 'progressReport', 'estimateCost'] as SectionKey[]).map((section, index) => <label key={section}><input type="checkbox" checked={printSections[section]} onChange={(event) => setPrintSections((current) => ({ ...current, [section]: event.target.checked }))} /><span>Page {index + 1}</span></label>)}<button className="primary-button full" onClick={printSelected}><Printer size={15} /> Print pages</button></div>}</div></div></header>
+        <header className="topbar"><div><p className="eyebrow">{viewMode === 'archive' ? 'Records / Archive' : viewMode === 'evaluations' ? 'Records / Evaluations' : 'Records / Overview'}</p><h1>{selectedPatient ? selectedPatient.name : 'Patient records'}</h1></div><div className="top-actions"><div className="save-status">{notice ? <><span className="status-dot" /> {notice}</> : 'All changes saved locally'}</div><button className="icon-button mobile-menu" onClick={() => setSidebarOpen(true)}><Menu size={19} /></button><button className="outline-button" onClick={() => setShowNotesModal(true)} disabled={!selectedPatient}><StickyNote size={16} /> PT Notes</button><button className="outline-button" onClick={() => { setEditingPatient(selectedPatient); setShowPatientModal(true); }} disabled={!selectedPatient}><Pencil size={16} /> Edit</button><button className="outline-button archive-header" onClick={() => void toggleArchive(selectedPatient)} disabled={!selectedPatient}>{selectedPatient?.status === 'active' ? <Archive size={16} /> : <ArchiveRestore size={16} />}{selectedPatient?.status === 'active' ? 'Archive patient' : 'Restore patient'}</button><button className="primary-button save-header" onClick={() => void saveEvaluation()} disabled={!selectedPatient || saving}><Save size={16} /> {saving ? 'Saving…' : 'Save evaluation'}</button><div className="print-wrap"><button className="dark-button" onClick={() => setShowPrintMenu((current) => !current)} disabled={!selectedPatient}><Printer size={16} /> Print selected <ChevronDown size={14} /></button>{showPrintMenu && <div className="print-menu"><div className="print-menu-title">Select pages to print</div>{(['patient', 'objective', 'vitals', 'goals', 'plan', 'problemGoals', 'medicalCertificate', 'progressReport', 'estimateCost', 'ptNotes'] as SectionKey[]).map((section, index) => <label key={section}><input type="checkbox" checked={printSections[section]} onChange={(event) => setPrintSections((current) => ({ ...current, [section]: event.target.checked }))} /><span>Page {index + 1}</span></label>)}<button className="primary-button full" onClick={printSelected}><Printer size={15} /> Print pages</button></div>}</div></div></header>
         {selectedPatient && evaluation ? <div className="record-layout">
           <section className="record-card patient-info" data-print-section="patient">
             <div className="patient-info-document">
@@ -517,7 +575,7 @@ function App() {
                 <span className="vital-signs-label">MANUAL MUSCLE TESTING:</span>
               </div>
 
-              <textarea className="manual-muscle-box auto-grow" aria-label="Manual muscle testing" placeholder="" value={String(patientFieldValue('manualMuscleTesting'))} onChange={(event) => updatePatientField('manualMuscleTesting', event.target.value)} />
+              <textarea className="manual-muscle-box auto-grow" aria-label="Manual muscle testing" placeholder="" value={String(patientFieldValue('manualMuscleTesting'))} onChange={(event) => updatePatientField('manualMuscleTesting', event.target.value)} onInput={autoResize} />
 
               <div className="vital-signs-significance secondary-significance">
                 <span>Significance:</span>
@@ -532,7 +590,7 @@ function App() {
                 <div className="goals-line-row">
                   <span className="goals-label">A: PROBLEM LIST:</span>
                 </div>
-                <textarea className="goals-problem-box auto-grow" aria-label="Problem list" value={String(patientFieldValue('problemList'))} onChange={(event) => updatePatientField('problemList', event.target.value)} />
+                <textarea className="goals-problem-box auto-grow" aria-label="Problem list" value={String(patientFieldValue('problemList'))} onChange={(event) => updatePatientField('problemList', event.target.value)} onInput={autoResize} />
               </div>
 
               <div className="goals-form-block">
@@ -542,7 +600,7 @@ function App() {
                   <textarea key={`longTermGoalsSessions-${selectedId}`} className="goals-inline-input auto-grow" rows={1} onInput={autoResize} aria-label="Long term goals treatment sessions" value={String(patientFieldValue('longTermGoalsSessions'))} onChange={(event) => updatePatientField('longTermGoalsSessions', event.target.value)} />
                   <span className="goals-middle-text">treatment sessions)</span>
                 </div>
-                <textarea className="goals-box auto-grow" aria-label="Long term goals" value={String(patientFieldValue('longTermGoalsText'))} onChange={(event) => updatePatientField('longTermGoalsText', event.target.value)} />
+                <textarea className="goals-box auto-grow" aria-label="Long term goals" value={String(patientFieldValue('longTermGoalsText'))} onChange={(event) => updatePatientField('longTermGoalsText', event.target.value)} onInput={autoResize} />
               </div>
 
               <div className="goals-form-block">
@@ -552,7 +610,7 @@ function App() {
                   <textarea key={`shortTermGoalsSessions-${selectedId}`} className="goals-inline-input auto-grow" rows={1} onInput={autoResize} aria-label="Short term goals treatment sessions" value={String(patientFieldValue('shortTermGoalsSessions'))} onChange={(event) => updatePatientField('shortTermGoalsSessions', event.target.value)} />
                   <span className="goals-middle-text">treatment sessions)</span>
                 </div>
-                <textarea className="goals-box auto-grow" aria-label="Short term goals" value={String(patientFieldValue('shortTermGoalsText'))} onChange={(event) => updatePatientField('shortTermGoalsText', event.target.value)} />
+                <textarea className="goals-box auto-grow" aria-label="Short term goals" value={String(patientFieldValue('shortTermGoalsText'))} onChange={(event) => updatePatientField('shortTermGoalsText', event.target.value)} onInput={autoResize} />
                 <div className="short-term-goals-footer">
                   <div className="short-term-goals-impression-row">
                     <span className="short-term-goals-impression">PT IMPRESSION: REHABILITATION POTENTIAL:</span>
@@ -598,7 +656,7 @@ function App() {
               </div>
 
               <div className="treatment-plan-box-wrap">
-                <textarea className="treatment-plan-box auto-grow" aria-label="Plan treatment text" value={String(patientFieldValue('planTreatmentText'))} onChange={(event) => updatePatientField('planTreatmentText', event.target.value)} />
+                <textarea className="treatment-plan-box auto-grow" aria-label="Plan treatment text" value={String(patientFieldValue('planTreatmentText'))} onChange={(event) => updatePatientField('planTreatmentText', event.target.value)} onInput={autoResize} />
               </div>
 
               <div className="treatment-plan-row treatment-plan-row-header">
@@ -606,7 +664,7 @@ function App() {
               </div>
 
               <div className="treatment-plan-box-wrap">
-                <textarea className="treatment-plan-box auto-grow" aria-label="Home instructions and recommendations" value={String(patientFieldValue('homeInstructionsText'))} onChange={(event) => updatePatientField('homeInstructionsText', event.target.value)} />
+                <textarea className="treatment-plan-box auto-grow" aria-label="Home instructions and recommendations" value={String(patientFieldValue('homeInstructionsText'))} onChange={(event) => updatePatientField('homeInstructionsText', event.target.value)} onInput={autoResize} />
               </div>
 
               <div className="treatment-plan-signature-row">
@@ -631,12 +689,12 @@ function App() {
 
             <div className="problem-goals-block">
               <div className="problem-goals-title">PRESENT PROBLEM LIST:</div>
-              <textarea className="problem-goals-box auto-grow" aria-label="Present problem list" value={String(patientFieldValue('presentProblemList'))} onChange={(event) => updatePatientField('presentProblemList', event.target.value)} />
+              <textarea className="problem-goals-box auto-grow" aria-label="Present problem list" value={String(patientFieldValue('presentProblemList'))} onChange={(event) => updatePatientField('presentProblemList', event.target.value)} onInput={autoResize} />
             </div>
 
             <div className="problem-goals-block">
               <div className="problem-goals-title">RECOMMENDATION / GOALS:</div>
-              <textarea className="problem-goals-box auto-grow" aria-label="Recommendation and goals" value={String(patientFieldValue('recommendationGoals'))} onChange={(event) => updatePatientField('recommendationGoals', event.target.value)} />
+              <textarea className="problem-goals-box auto-grow" aria-label="Recommendation and goals" value={String(patientFieldValue('recommendationGoals'))} onChange={(event) => updatePatientField('recommendationGoals', event.target.value)} onInput={autoResize} />
             </div>
 
             <div className="problem-goals-signature-row">
@@ -739,17 +797,17 @@ function App() {
 
               <div className="progress-report-section">
                 <h3>TREATMENT GIVEN:</h3>
-                 <textarea className="problem-goals-box auto-grow" aria-label="Treatment given" value={String(patientFieldValue('treatmentGiven'))} onChange={(event) => updatePatientField('treatmentGiven', event.target.value)} />
+                 <textarea className="problem-goals-box auto-grow" aria-label="Treatment given" value={String(patientFieldValue('treatmentGiven'))} onChange={(event) => updatePatientField('treatmentGiven', event.target.value)} onInput={autoResize} />
               </div>
 
               <div className="progress-report-section">
                 <h3>PREVIOUS PROBLEM LIST:</h3>
-               <textarea className="problem-goals-box auto-grow" aria-label="Previous problem list" value={String(patientFieldValue('previousProblemList'))} onChange={(event) => updatePatientField('previousProblemList', event.target.value)} />
+               <textarea className="problem-goals-box auto-grow" aria-label="Previous problem list" value={String(patientFieldValue('previousProblemList'))} onChange={(event) => updatePatientField('previousProblemList', event.target.value)} onInput={autoResize} />
               </div>
 
               <div className="progress-report-section progress-report-section-nested">
                 <h3>PROGRESS EVALUATION:</h3>
-                <textarea className="problem-goals-box auto-grow" aria-label="Progress evaluation" value={String(patientFieldValue('progressEvaluationText'))} onChange={(event) => updatePatientField('progressEvaluationText', event.target.value)} />
+                <textarea className="problem-goals-box auto-grow" aria-label="Progress evaluation" value={String(patientFieldValue('progressEvaluationText'))} onChange={(event) => updatePatientField('progressEvaluationText', event.target.value)} onInput={autoResize} />
               </div>
             </div>
           </section>
@@ -826,6 +884,54 @@ function App() {
             </div>
           </section>
 
+          <section className="pt-notes-page page-break-page-10" data-print-section="ptNotes">
+            <header className="pt-notes-header">
+              <div className="document-logo-wrap">
+                <img className="document-logo" src={clinicLogo} alt="Clinic logo" />
+              </div>
+              <div className="pt-notes-branding">
+                <h1>BORONGAN PHYSICAL THERAPY CENTER</h1>
+                <p>REAL STREET, BARANGAY SONGCO, BORONGAN EASTERN SAMAR</p>
+                <p>+639293310697 / +639085982802 / +6392743043238</p>
+              </div>
+            </header>
+
+            <h2 className="pt-notes-title">PT NOTES</h2>
+
+            <div className="pt-notes-body">
+              <div className="pt-notes-grid">
+                {getNotesEntries().map((entry, index) => (
+                  <div className="pt-notes-entry" key={index}>
+                    <div className="pt-notes-entry-header">
+                      <label>DATE:</label>
+                      <input
+                        type="text"
+                        className="pt-notes-date-input"
+                        value={entry.date}
+                        onChange={(event) => updateNotesEntry(index, 'date', event.target.value)}
+                        aria-label={`Note entry ${index + 1} date`}
+                      />
+                      <button type="button" className="pt-notes-remove no-print" onClick={() => removeNotesEntry(index)} aria-label="Remove note entry">
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <textarea
+                      className="pt-notes-entry-text auto-grow"
+                      value={entry.text}
+                      onChange={(event) => updateNotesEntry(index, 'text', event.target.value)}
+                      onInput={autoResize}
+                      placeholder="Write notes here..."
+                      aria-label={`Note entry ${index + 1} text`}
+                    />
+                  </div>
+                ))}
+              </div>
+              <button type="button" className="outline-button no-print pt-notes-add" onClick={addNotesEntry}>
+                <Plus size={15} /> Add note entry
+              </button>
+            </div>
+          </section>
+
           <div className="record-footer"><div><FileText size={16} /><span>Evaluation document</span></div><button className="delete-button" onClick={() => void deletePatient(selectedPatient)}><Trash2 size={15} /> Delete patient</button></div>
         </div> : <div className="welcome-card"><div className="welcome-icon"><Stethoscope size={26} /></div><h2>Select a patient to begin</h2><p>Choose a patient from the list or add a new record to start documenting care.</p><button className="primary-button" onClick={() => setShowPatientModal(true)}><Plus size={16} /> Add new patient</button></div>}
       </main>
@@ -845,6 +951,18 @@ function App() {
           updated_at: new Date().toISOString(),
         } : patient));
       }} />}
+      {showNotesModal && selectedPatient && (
+        <NotesModal
+          patientName={selectedPatient.name}
+          entries={getNotesEntries()}
+          onUpdate={updateNotesEntry}
+          onAdd={addNotesEntry}
+          onRemove={removeNotesEntry}
+          onClose={() => setShowNotesModal(false)}
+          onSave={() => void saveNotes()}
+          saving={saving}
+        />
+      )}
     </div>
   );
 }
@@ -865,6 +983,64 @@ function PatientModal({ patient, onClose, onSave, onPreviewChange }: { patient: 
   }
   async function submit(event: React.FormEvent) { event.preventDefault(); if (!form.name.trim()) return; setSaving(true); await onSave({ ...form, name: form.name.trim(), age: form.age ? Number(form.age) : null }); setSaving(false); }
   return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><form className="modal" onSubmit={submit}><div className="modal-header"><div><p className="eyebrow">Patient records</p><h2>{patient ? 'Edit patient' : 'Add new patient'}</h2></div><button type="button" className="icon-button" onClick={onClose}><X size={18} /></button></div><div className="form-grid"><label className="wide">Full name<input required value={form.name} onChange={(event) => update('name', event.target.value)} placeholder="e.g. Jordan Lee" /></label><label>Primary diagnosis<input value={form.diagnosis} onChange={(event) => update('diagnosis', event.target.value)} placeholder="e.g. Knee pain" /></label><label>Age<input type="number" min="0" value={form.age} onChange={(event) => update('age', event.target.value)} placeholder="Years" /></label><label>Gender<select value={form.gender} onChange={(event) => update('gender', event.target.value)}><option value="">Select</option><option>Female</option><option>Male</option><option>Non-binary</option><option>Prefer not to say</option></select></label><label>Nationality<input value={form.nationality} onChange={(event) => update('nationality', event.target.value)} placeholder="e.g. Filipino" /></label><label>Attending physician<input value={form.attending_physician} onChange={(event) => update('attending_physician', event.target.value)} placeholder="e.g. Dr. Smith" /></label><label>Phone<input value={form.phone} onChange={(event) => update('phone', event.target.value)} placeholder="(555) 000-0000" /></label><label>Email<input type="email" value={form.email} onChange={(event) => update('email', event.target.value)} placeholder="name@email.com" /></label><label className="wide">Address<input value={form.address} onChange={(event) => update('address', event.target.value)} placeholder="Street address" /></label></div><div className="modal-footer"><button type="button" className="outline-button" onClick={onClose}>Cancel</button><button className="primary-button" disabled={saving}>{saving ? 'Saving…' : patient ? 'Save changes' : 'Create patient'}</button></div></form></div>;
+}
+
+function NotesModal({ patientName, entries, onUpdate, onAdd, onRemove, onClose, onSave, saving }: { patientName: string; entries: { date: string; text: string }[]; onUpdate: (index: number, field: 'date' | 'text', value: string) => void; onAdd: () => void; onRemove: (index: number) => void; onClose: () => void; onSave: () => void; saving: boolean; }) {
+  function handleInput(event: React.FormEvent<HTMLTextAreaElement>) {
+    const el = event.currentTarget;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }
+  return (
+    <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div className="modal notes-modal">
+        <div className="modal-header">
+          <div>
+            <p className="eyebrow">PT Notes</p>
+            <h2>{patientName}</h2>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose}><X size={18} /></button>
+        </div>
+        <div className="notes-modal-body">
+          {entries.map((entry, index) => (
+            <div className="notes-modal-entry" key={index}>
+              <div className="notes-modal-entry-header">
+                <label>DATE:</label>
+                <input
+                  type="text"
+                  className="notes-modal-date-input"
+                  value={entry.date}
+                  onChange={(event) => onUpdate(index, 'date', event.target.value)}
+                  aria-label={`Note entry ${index + 1} date`}
+                />
+                <button type="button" className="icon-button" onClick={() => onRemove(index)} aria-label="Remove note entry">
+                  <X size={14} />
+                </button>
+              </div>
+              <textarea
+                className="notes-modal-textarea"
+                autoFocus={index === entries.length - 1}
+                placeholder="Write session notes, observations, or reminders for this patient here..."
+                value={entry.text}
+                onChange={(event) => onUpdate(index, 'text', event.target.value)}
+                onInput={handleInput}
+                aria-label={`Note entry ${index + 1} text`}
+              />
+            </div>
+          ))}
+          <button type="button" className="outline-button" onClick={onAdd}>
+            <Plus size={15} /> Add note entry
+          </button>
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="outline-button" onClick={onClose}>Close</button>
+          <button type="button" className="primary-button" onClick={onSave} disabled={saving}>
+            <Save size={16} /> {saving ? 'Saving…' : 'Save notes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default App;
