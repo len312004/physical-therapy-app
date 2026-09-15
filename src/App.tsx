@@ -842,11 +842,12 @@ function App() {
 
             <div className="pt-notes-body">
               <textarea
-                className="pt-notes-box"
+                className="pt-notes-box auto-grow"
                 aria-label="PT notes"
                 placeholder="Write session notes, observations, or reminders for this patient here..."
                 value={String(patientFieldValue('ptNotes'))}
                 onChange={(event) => updatePatientField('ptNotes', event.target.value)}
+                onInput={autoResize}
               />
             </div>
           </section>

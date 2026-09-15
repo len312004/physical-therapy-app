@@ -1479,6 +1479,13 @@ body {
   page-break-before: always;
 }
 
+/* PT Notes page — add this block to your main CSS file */
+
+.page-break-page-10 {
+  break-before: page;
+  page-break-before: always;
+}
+
 .pt-notes-page {
   background: #ffffff;
   border: none;
@@ -1537,14 +1544,15 @@ body {
 }
 .pt-notes-box {
   width: 100%;
-  min-height: 420px;
+  min-height: 200px;
   border: 2px solid #111111;
   background: #f7f7f7;
   font-size: 15px;
   line-height: 1.6;
   font-family: inherit;
   padding: 14px;
-  resize: vertical;
+  resize: none;
+  overflow: hidden;
   outline: none;
   box-sizing: border-box;
 }
