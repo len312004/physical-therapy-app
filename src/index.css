@@ -1043,7 +1043,7 @@ body {
 .medical-fill-date { min-width: 180px; }
 .medical-fill-place { min-width: 120px; }
 .medical-certificate-signature {
-  margin-top: 34px;
+  margin-top: 90px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
