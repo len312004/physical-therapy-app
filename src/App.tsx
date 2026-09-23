@@ -347,7 +347,7 @@ function App() {
     if (patient.id === selectedId) setSelectedId('');
   }
 
-  async function printSelected() {
+  function printSelected() {
     setShowPrintMenu(false);
     const nextPrintSections = { ...printSections };
     setPrintSections(nextPrintSections);
@@ -356,18 +356,7 @@ function App() {
       root.style.setProperty(`--print-${section}`, nextPrintSections[section] ? 'block' : 'none');
     });
     
-    // Try to use Electron IPC for better print preview support
-    if ((window as any).electron?.invoke) {
-      try {
-        await (window as any).electron.invoke('print-document');
-      } catch (error) {
-        console.error('Electron print failed, falling back to window.print():', error);
-        window.print();
-      }
-    } else {
-      // Fallback for web version
-      window.print();
-    }
+    window.print();
   }
 
   const initials = selectedPatient?.name.split(' ').map((part) => part[0]).join('').slice(0, 2) ?? 'PT';

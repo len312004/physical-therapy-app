@@ -32,49 +32,6 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
-
-  // Handle print preview
-  ipcMain.handle('print-document', async () => {
-    if (!mainWindow) return;
-
-    const printOptions = {
-      silent: false,
-      printBackground: true,
-      color: true,
-      margin: {
-        marginType: 'default',
-      },
-      pageSize: 'A4',
-    };
-
-    try {
-      await mainWindow.webContents.print(printOptions);
-      return { success: true };
-    } catch (error) {
-      console.error('Print error:', error);
-      return { success: false, error: String(error) };
-    }
-  });
-
-  // Handle PDF export
-  ipcMain.handle('export-pdf', async () => {
-    if (!mainWindow) return { success: false };
-
-    try {
-      const pdfData = await mainWindow.webContents.printToPDF({
-        pageSize: 'A4',
-        printBackground: true,
-      });
-
-      const pdfPath = path.join(app.getPath('documents'), `PT-Report-${Date.now()}.pdf`);
-      require('fs').writeFileSync(pdfPath, pdfData);
-
-      return { success: true, path: pdfPath };
-    } catch (error) {
-      console.error('PDF export error:', error);
-      return { success: false, error: String(error) };
-    }
-  });
 }
 
 app.on('ready', createWindow);
