@@ -347,7 +347,28 @@ function App() {
     if (patient.id === selectedId) setSelectedId('');
   }
 
-  function printSelected() {
+  async function handlePrintPreview() {
+    const nextPrintSections = { ...printSections };
+    const root = document.documentElement;
+    (['patient', 'subjective', 'objective', 'assessment', 'plan', 'vitals', 'goals', 'problemGoals', 'medicalCertificate', 'progressReport', 'estimateCost', 'ptNotes'] as SectionKey[]).forEach((section) => {
+      root.style.setProperty(`--print-${section}`, nextPrintSections[section] ? 'block' : 'none');
+    });
+    
+    // Try to use Electron IPC for better print preview support
+    if ((window as any).electron?.invoke) {
+      try {
+        await (window as any).electron.invoke('print-document');
+      } catch (error) {
+        console.error('Electron print failed, falling back to window.print():', error);
+        window.print();
+      }
+    } else {
+      // Fallback for web version
+      window.print();
+    }
+  }
+
+  async function printSelected() {
     setShowPrintMenu(false);
     const nextPrintSections = { ...printSections };
     setPrintSections(nextPrintSections);
@@ -355,7 +376,19 @@ function App() {
     (['patient', 'subjective', 'objective', 'assessment', 'plan', 'vitals', 'goals', 'problemGoals', 'medicalCertificate', 'progressReport', 'estimateCost', 'ptNotes'] as SectionKey[]).forEach((section) => {
       root.style.setProperty(`--print-${section}`, nextPrintSections[section] ? 'block' : 'none');
     });
-    window.print();
+    
+    // Try to use Electron IPC for better print preview support
+    if ((window as any).electron?.invoke) {
+      try {
+        await (window as any).electron.invoke('print-document');
+      } catch (error) {
+        console.error('Electron print failed, falling back to window.print():', error);
+        window.print();
+      }
+    } else {
+      // Fallback for web version
+      window.print();
+    }
   }
 
   const initials = selectedPatient?.name.split(' ').map((part) => part[0]).join('').slice(0, 2) ?? 'PT';
@@ -376,7 +409,7 @@ function App() {
         <div className="patient-list">
           {loading ? <div className="empty-state">Loading records…</div> : visiblePatients.length ? visiblePatients.map((patient) => <button key={patient.id} className={`patient-card ${patient.id === selectedId ? 'selected' : ''}`} onClick={() => setSelectedId(patient.id)}><div className="patient-avatar">{patient.name.split(' ').map((part) => part[0]).join('').slice(0, 2)}</div><div className="patient-summary"><strong>{patient.name}</strong><span>{patient.diagnosis || 'No diagnosis added'}</span></div><ChevronDown size={15} className="patient-chevron" /></button>) : <div className="empty-state">No patients found</div>}
         </div>
-        <div className="sidebar-footer"><div className="profile-avatar">DA</div><div><strong>Dahlia May J. Oledan-Baliton</strong><span>Physical therapist</span></div></div>
+        <div className="sidebar-footer"><div className="profile-avatar">DA</div><div><strong>Danila May J. Oledan-Baliton</strong><span>Physical therapist</span></div></div>
       </aside>
 
       <main className="main-content">
@@ -393,6 +426,7 @@ function App() {
     <button className="outline-button archive-header" onClick={() => selectedPatient && void toggleArchive(selectedPatient)} disabled={!selectedPatient}>{selectedPatient?.status === 'active' ? <Archive size={16} /> : <ArchiveRestore size={16} />}{selectedPatient?.status === 'active' ? 'Archive patient' : 'Restore patient'}</button>
     <button className="primary-button save-header" onClick={() => void saveEvaluation()} disabled={!selectedPatient || saving}><Save size={16} /> {saving ? 'Saving…' : 'Save evaluation'}</button>
     <div className="print-wrap">
+      <button className="outline-button" onClick={handlePrintPreview} disabled={!selectedPatient}><Printer size={16} /> Print Preview</button>
       <button className="dark-button" onClick={() => setShowPrintMenu((current) => !current)} disabled={!selectedPatient}><Printer size={16} /> Print selected <ChevronDown size={14} /></button>
       {showPrintMenu && <div className="print-menu"><div className="print-menu-title">Select pages to print</div>{(['patient', 'objective', 'vitals', 'goals', 'plan', 'problemGoals', 'medicalCertificate', 'progressReport', 'estimateCost', 'ptNotes'] as SectionKey[]).map((section, index) => <label key={section}><input type="checkbox" checked={printSections[section]} onChange={(event) => setPrintSections((current) => ({ ...current, [section]: event.target.checked }))} /><span>Page {index + 1}</span></label>)}<button className="primary-button full" onClick={printSelected}><Printer size={15} /> Print pages</button></div>}
     </div>
@@ -914,7 +948,7 @@ function App() {
                 </div>
 
                 <div className="estimate-cost-signature-box">
-                  <input className="estimate-cost-signature-name" type="text" aria-label="Therapist name" defaultValue="Dahlia May J. Oledan-Baliton, PTRP" />
+                  <input className="estimate-cost-signature-name" type="text" aria-label="Therapist name" defaultValue="Danila May J. Oledan-Baliton, PTRP" />
                   <div className="estimate-cost-signature-role">PHYSICAL THERAPIST</div>
                   <div className="estimate-cost-signature-license">Lic. No. 23167</div>
                 </div>
