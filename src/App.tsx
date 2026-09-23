@@ -376,11 +376,28 @@ function App() {
         <div className="patient-list">
           {loading ? <div className="empty-state">Loading records…</div> : visiblePatients.length ? visiblePatients.map((patient) => <button key={patient.id} className={`patient-card ${patient.id === selectedId ? 'selected' : ''}`} onClick={() => setSelectedId(patient.id)}><div className="patient-avatar">{patient.name.split(' ').map((part) => part[0]).join('').slice(0, 2)}</div><div className="patient-summary"><strong>{patient.name}</strong><span>{patient.diagnosis || 'No diagnosis added'}</span></div><ChevronDown size={15} className="patient-chevron" /></button>) : <div className="empty-state">No patients found</div>}
         </div>
-        <div className="sidebar-footer"><div className="profile-avatar">DA</div><div><strong>Danila May J. Oledan-Baliton</strong><span>Physical therapist</span></div></div>
+        <div className="sidebar-footer"><div className="profile-avatar">DA</div><div><strong>Dahlia May J. Oledan-Baliton</strong><span>Physical therapist</span></div></div>
       </aside>
 
       <main className="main-content">
-        <header className="topbar"><div><p className="eyebrow">{viewMode === 'archive' ? 'Records / Archive' : viewMode === 'evaluations' ? 'Records / Evaluations' : 'Records / Overview'}</p><h1>{selectedPatient ? selectedPatient.name : 'Patient records'}</h1></div><div className="top-actions"><div className="save-status">{notice ? <><span className="status-dot" /> {notice}</> : 'All changes saved locally'}</div><button className="icon-button mobile-menu" onClick={() => setSidebarOpen(true)}><Menu size={19} /></button><button className="outline-button" onClick={() => setShowNotesModal(true)} disabled={!selectedPatient}><StickyNote size={16} /> PT Notes</button><button className="outline-button" onClick={() => { setEditingPatient(selectedPatient); setShowPatientModal(true); }} disabled={!selectedPatient}><Pencil size={16} /> Edit</button><button className="outline-button archive-header" onClick={() => void toggleArchive(selectedPatient)} disabled={!selectedPatient}>{selectedPatient?.status === 'active' ? <Archive size={16} /> : <ArchiveRestore size={16} />}{selectedPatient?.status === 'active' ? 'Archive patient' : 'Restore patient'}</button><button className="primary-button save-header" onClick={() => void saveEvaluation()} disabled={!selectedPatient || saving}><Save size={16} /> {saving ? 'Saving…' : 'Save evaluation'}</button><div className="print-wrap"><button className="dark-button" onClick={() => setShowPrintMenu((current) => !current)} disabled={!selectedPatient}><Printer size={16} /> Print selected <ChevronDown size={14} /></button>{showPrintMenu && <div className="print-menu"><div className="print-menu-title">Select pages to print</div>{(['patient', 'objective', 'vitals', 'goals', 'plan', 'problemGoals', 'medicalCertificate', 'progressReport', 'estimateCost', 'ptNotes'] as SectionKey[]).map((section, index) => <label key={section}><input type="checkbox" checked={printSections[section]} onChange={(event) => setPrintSections((current) => ({ ...current, [section]: event.target.checked }))} /><span>Page {index + 1}</span></label>)}<button className="primary-button full" onClick={printSelected}><Printer size={15} /> Print pages</button></div>}</div></div></header>
+        <header className="topbar">
+  <div>
+    <p className="eyebrow">{viewMode === 'archive' ? 'Records / Archive' : viewMode === 'evaluations' ? 'Records / Evaluations' : 'Records / Overview'}</p>
+    <h1>{selectedPatient ? selectedPatient.name : 'Patient records'}</h1>
+  </div>
+  <div className="top-actions">
+    <div className="save-status">{notice ? <><span className="status-dot" /> {notice}</> : 'All changes saved locally'}</div>
+    <button className="icon-button mobile-menu" onClick={() => setSidebarOpen(true)}><Menu size={19} /></button>
+    <button className="outline-button" onClick={() => setShowNotesModal(true)} disabled={!selectedPatient}><StickyNote size={16} /> PT Notes</button>
+    <button className="outline-button" onClick={() => { setEditingPatient(selectedPatient); setShowPatientModal(true); }} disabled={!selectedPatient}><Pencil size={16} /> Edit</button>
+    <button className="outline-button archive-header" onClick={() => selectedPatient && void toggleArchive(selectedPatient)} disabled={!selectedPatient}>{selectedPatient?.status === 'active' ? <Archive size={16} /> : <ArchiveRestore size={16} />}{selectedPatient?.status === 'active' ? 'Archive patient' : 'Restore patient'}</button>
+    <button className="primary-button save-header" onClick={() => void saveEvaluation()} disabled={!selectedPatient || saving}><Save size={16} /> {saving ? 'Saving…' : 'Save evaluation'}</button>
+    <div className="print-wrap">
+      <button className="dark-button" onClick={() => setShowPrintMenu((current) => !current)} disabled={!selectedPatient}><Printer size={16} /> Print selected <ChevronDown size={14} /></button>
+      {showPrintMenu && <div className="print-menu"><div className="print-menu-title">Select pages to print</div>{(['patient', 'objective', 'vitals', 'goals', 'plan', 'problemGoals', 'medicalCertificate', 'progressReport', 'estimateCost', 'ptNotes'] as SectionKey[]).map((section, index) => <label key={section}><input type="checkbox" checked={printSections[section]} onChange={(event) => setPrintSections((current) => ({ ...current, [section]: event.target.checked }))} /><span>Page {index + 1}</span></label>)}<button className="primary-button full" onClick={printSelected}><Printer size={15} /> Print pages</button></div>}
+    </div>
+  </div>
+</header>
         {selectedPatient && evaluation ? <div className="record-layout">
           <section className="record-card patient-info" data-print-section="patient">
             <div className="patient-info-document">
@@ -768,7 +785,7 @@ function App() {
 
             <div className="medical-certificate-signature">
               <div className="signature-name-wrap">
-                <div className="signature-name">Danila May J. Oledan-Baliton, PTRP</div>
+                <div className="signature-name">Dahlia May J. Oledan-Baliton, PTRP</div>
               </div>
               <div className="signature-meta">
                 <div className="signature-title">PHYSICAL THERAPIST</div>
@@ -897,7 +914,7 @@ function App() {
                 </div>
 
                 <div className="estimate-cost-signature-box">
-                  <input className="estimate-cost-signature-name" type="text" aria-label="Therapist name" defaultValue="Danila May J. Oledan-Baliton, PTRP" />
+                  <input className="estimate-cost-signature-name" type="text" aria-label="Therapist name" defaultValue="Dahlia May J. Oledan-Baliton, PTRP" />
                   <div className="estimate-cost-signature-role">PHYSICAL THERAPIST</div>
                   <div className="estimate-cost-signature-license">Lic. No. 23167</div>
                 </div>

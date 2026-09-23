@@ -1,27 +1,39 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "physical-therapy-docs",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "main": "dist-electron/main.js",
+  "homepage": "./",
   "scripts": {
     "dev": "vite",
+    "dev:electron": "npm run build:main && concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "vite build",
+    "build:main": "tsc -p tsconfig.electron.json && echo {\"type\":\"commonjs\"} > dist-electron/package.json",
+    "build:electron": "npm run build && npm run build:main",
+    "dist": "npm run build:electron && electron-builder",
+    "dist:win": "npm run build:electron && electron-builder --win",
     "lint": "eslint .",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.electron.json"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
     "lucide-react": "^0.446.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "electron-is-dev": "^2.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
+    "@types/electron": "latest",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.18",
+    "concurrently": "^8.2.1",
+    "electron": "latest",
+    "electron-builder": "^24.6.4",
     "eslint": "^9.9.1",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.11",
@@ -30,6 +42,46 @@
     "tailwindcss": "^3.4.1",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0",
-    "vite": "^5.4.2"
+    "vite": "^5.4.2",
+    "wait-on": "^7.0.1"
+  },
+  "build": {
+    "appId": "com.physicaltherapydocs.app",
+    "productName": "Physical Therapy Docs",
+    "directories": {
+      "buildResources": "public"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Physical Therapy Docs"
+    },
+    "portable": {
+      "artifactName": "Physical-Therapy-Docs-${version}.exe"
+    }
   }
 }
