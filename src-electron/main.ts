@@ -64,9 +64,6 @@ function createWindow() {
       const pdfData = await mainWindow.webContents.printToPDF({
         pageSize: 'A4',
         printBackground: true,
-        margin: {
-          marginType: 'default',
-        },
       });
 
       const pdfPath = path.join(app.getPath('documents'), `PT-Report-${Date.now()}.pdf`);
